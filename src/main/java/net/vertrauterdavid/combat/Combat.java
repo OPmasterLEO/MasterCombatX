@@ -9,6 +9,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,7 +27,6 @@ public class Combat extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
-
         instance = this;
 
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
@@ -38,19 +39,31 @@ public class Combat extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new PlayerQuitListener(), instance);
         Bukkit.getPluginManager().registerEvents(new PlayerTeleportListener(), instance);
 
-        Bukkit.getScheduler().scheduleAsyncRepeatingTask(this, () -> Bukkit.getOnlinePlayers().forEach(player -> {
-            if (isInCombat(player)) {
-                long seconds = (combatPlayers.get(player.getUniqueId()) - System.currentTimeMillis()) / 1000;
-                player.sendActionBar(getMessage("ActionBar.Format").replaceAll("%seconds%", String.valueOf(seconds + 1)));
-            }
+        Bukkit.getScheduler().scheduleAsyncRepeatingTask(this, () -> {
+            long currentTime = System.currentTimeMillis();
+            Iterator<Map.Entry<UUID, Long>> iterator = combatPlayers.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<UUID, Long> entry = iterator.next();
+                UUID uuid = entry.getKey();
+                Player player = Bukkit.getPlayer(uuid);
 
-            if (!isInCombat(player) && combatPlayers.containsKey(player.getUniqueId())) {
-                if (!(Combat.getInstance().getConfig().getString("Messages.NoLongerInCombat", "").equalsIgnoreCase(""))) {
-                    player.sendMessage(Combat.getInstance().getMessage("Messages.Prefix") + Combat.getInstance().getMessage("Messages.NoLongerInCombat"));
+                if (player == null) {
+                    iterator.remove();
+                    continue;
                 }
-                combatPlayers.remove(player.getUniqueId());
+
+                long endTime = entry.getValue();
+                if (currentTime >= endTime) {
+                    iterator.remove();
+                    if (!getConfig().getString("Messages.NoLongerInCombat", "").isEmpty()) {
+                        player.sendMessage(getMessage("Messages.Prefix") + getMessage("Messages.NoLongerInCombat"));
+                    }
+                } else {
+                    long seconds = (endTime - currentTime) / 1000;
+                    player.sendActionBar(getMessage("ActionBar.Format").replace("%seconds%", String.valueOf(seconds + 1)));
+                }
             }
-        }), 20, 20);
+        }, 20, 20);
     }
 
     public boolean isInCombat(Player player) {
@@ -87,5 +100,4 @@ public class Combat extends JavaPlugin {
         matcher.appendTail(buffer);
         return ChatColor.translateAlternateColorCodes('&', buffer.toString());
     }
-
 }
