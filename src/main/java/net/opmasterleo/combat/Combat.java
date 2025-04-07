@@ -1,10 +1,10 @@
 package net.opmasterleo.combat;
 
 import lombok.Getter;
-import net.md_5.bungee.api.ChatColor;
 import net.opmasterleo.combat.command.CombatCommand;
 import net.opmasterleo.combat.listener.*;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -78,15 +78,19 @@ public class Combat extends JavaPlugin {
             }
         }, 20, 20);
 
-        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&b   ____                _           _   "));
-        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&b  / ___|___  _ __ ___ | |__   __ _| |_ "));
-        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&b | |   / _ \\| '_ ` _ \\| '_ \\ / _` | __|"));
-        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&b | |__| (_) | | | | | | |_) | (_| | |_ "));
-        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&b  \\____\\___/|_| |_| |_|_.__/ \\__,_|\\__|"));
-        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&7                                        "));
-        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&aCombat Plugin Enabled! &7Version: &f" + version));
-        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&7Developed by &bVertrauterDavid&7, remade by &eopmasterleo"));
-        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&7Plugin loaded successfully!"));     
+        String version = getDescription().getVersion();
+        Component header = LegacyComponentSerializer.legacy('&').deserialize(
+            "&b   ____                _           _   \n" +
+            "&b  / ___|___  _ __ ___ | |__   __ _| |_ \n" +
+            "&b | |   / _ \\| '_ ` _ \\| '_ \\ / _` | __|\n" +
+            "&b | |__| (_) | | | | | | |_) | (_| | |_ \n" +
+            "&b  \\____\\___/|_| |_| |_|_.__/ \\__,_|\\__|\n" +
+            "&7                                        \n" +
+            "&aCombat Plugin Enabled! &7Version: &f" + version + "\n" +
+            "&7Developed by &bVertrauterDavid&7, remade by &eopmasterleo"
+        );
+        
+        Bukkit.getConsoleSender().sendMessage(header);
     }
 
     public boolean isCombatEnabledInWorld(Player player) {
@@ -129,13 +133,9 @@ public class Combat extends JavaPlugin {
     }
 
     private String translateColorCodes(String message) {
-        Pattern pattern = Pattern.compile("&#([A-Fa-f0-9]{6})");
-        Matcher matcher = pattern.matcher(message);
-        StringBuilder buffer = new StringBuilder();
-        while (matcher.find()) {
-            matcher.appendReplacement(buffer, ChatColor.of("#" + matcher.group(1)).toString());
-        }
-        return ChatColor.translateAlternateColorCodes('&', matcher.appendTail(buffer).toString());
+        return LegacyComponentSerializer.legacySection().serialize(
+            LegacyComponentSerializer.legacy('&').deserialize(message)
+        );
     }
 
     public void reloadCombatConfig() {
