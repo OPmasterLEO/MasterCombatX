@@ -5,3 +5,8 @@ api-version: 1.21
 author: OPmasterLEO
 softdepend:
   - WorldGuard
+commands:
+  combat:
+    description: Manage Combat plugin
+    usage: /combat [reload|toggle]
+    aliases: [combattoggle, combatreload]

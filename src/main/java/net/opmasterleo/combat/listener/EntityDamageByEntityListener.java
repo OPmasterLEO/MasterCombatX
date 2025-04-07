@@ -18,25 +18,18 @@ public class EntityDamageByEntityListener implements Listener {
 
         Entity damager = event.getDamager();
 
-        // Handle player-to-player damage
         if (damager instanceof Player damagerP) {
-            // Prevent self-damage from triggering combat
             if (damagerP.getUniqueId().equals(player.getUniqueId())) return;
-            
-            Combat.getInstance().setCombat(player);
-            Combat.getInstance().setCombat(damagerP);
+            Combat.getInstance().setCombat(player, damagerP);
+            Combat.getInstance().setCombat(damagerP, player);
         }
 
-        // Handle projectile damage
         if (damager instanceof Projectile projectile) {
             if (projectile.getShooter() instanceof Player shooter) {
-                // Prevent Ender Pearl self-damage from triggering combat
                 if (shooter.getUniqueId().equals(player.getUniqueId())) return;
-                
-                Combat.getInstance().setCombat(player);
-                Combat.getInstance().setCombat(shooter);
+                Combat.getInstance().setCombat(player, shooter);
+                Combat.getInstance().setCombat(shooter, player);
             }
         }
     }
-
 }

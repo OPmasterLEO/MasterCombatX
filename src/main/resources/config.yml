@@ -10,11 +10,23 @@
 # Duration of the combat timer in seconds
 Duration: 15
 
+# Enable combat only in specific worlds
+EnabledWorlds:
+  enabled: false
+  worlds:
+    - world1
+    - world2
+
 Messages:
   Prefix: '' # Prefix for all messages
   NowInCombat: '' # empty = disabled
   NoLongerInCombat: '' # empty = disabled
   LogoutInCombat: '' # empty = disabled
+
+  
+CustomDeathMessage:
+  enabled: false # Enables custom death messages
+  prefix: '&c☠'  
 
 # Disable Combat for all with OP permissions
 ignore-op: false
