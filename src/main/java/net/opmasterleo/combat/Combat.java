@@ -4,6 +4,7 @@ import lombok.Getter;
 import net.md_5.bungee.api.ChatColor;
 import net.opmasterleo.combat.command.CombatCommand;
 import net.opmasterleo.combat.listener.*;
+import org.bukkit.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -77,15 +78,15 @@ public class Combat extends JavaPlugin {
             }
         }, 20, 20);
 
-        getLogger().info("&b   ____                _           _   ");
-        getLogger().info("&b  / ___|___  _ __ ___ | |__   __ _| |_ ");
-        getLogger().info("&b | |   / _ \\| '_ ` _ \\| '_ \\ / _` | __|");
-        getLogger().info("&b | |__| (_) | | | | | | |_) | (_| | |_ ");
-        getLogger().info("&b  \\____\\___/|_| |_| |_|_.__/ \\__,_|\\__|");
-        getLogger().info("                                        ");
-        getLogger().info("&aCombat Plugin Enabled! &7Version: &f1.7");
-        getLogger().info("&7Developed by &bVertrauterDavid&7, remade by &eopmasterleo");
-        getLogger().info("&7Plugin loaded successfully!");        
+        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&b   ____                _           _   "));
+        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&b  / ___|___  _ __ ___ | |__   __ _| |_ "));
+        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&b | |   / _ \\| '_ ` _ \\| '_ \\ / _` | __|"));
+        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&b | |__| (_) | | | | | | |_) | (_| | |_ "));
+        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&b  \\____\\___/|_| |_| |_|_.__/ \\__,_|\\__|"));
+        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&7                                        "));
+        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&aCombat Plugin Enabled! &7Version: &f" + version));
+        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&7Developed by &bVertrauterDavid&7, remade by &eopmasterleo"));
+        getLogger().info(ChatColor.translateAlternateColorCodes('&', "&7Plugin loaded successfully!"));     
     }
 
     public boolean isCombatEnabledInWorld(Player player) {

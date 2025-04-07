@@ -17,7 +17,7 @@ public class CustomDeathMessageListener implements Listener {
         if (isCustomDeathMessageEnabled) {
             String prefix = Combat.getInstance().getConfig().getString("CustomDeathMessage.prefix");
             String originalDeathMessage = event.getDeathMessage();
-            String customDeathMessage = ChatColor.translateAlternateColorCodes('&', prefix) + " " + originalDeathMessage;
+            String customDeathMessage = ChatColor.translateAlternateColorCodes('&', prefix) + originalDeathMessage;
             event.setDeathMessage(customDeathMessage);
         }
     }

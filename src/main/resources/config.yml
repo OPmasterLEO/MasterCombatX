@@ -23,10 +23,10 @@ Messages:
   NoLongerInCombat: '' # empty = disabled
   LogoutInCombat: '' # empty = disabled
 
-  
+
 CustomDeathMessage:
   enabled: false # Enables custom death messages
-  prefix: '&c☠'  
+  prefix: '&c☠ '  
 
 # Disable Combat for all with OP permissions
 ignore-op: false
