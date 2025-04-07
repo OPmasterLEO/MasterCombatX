@@ -80,6 +80,7 @@ public class Combat extends JavaPlugin {
 
         String version = getDescription().getVersion();
         Component header = LegacyComponentSerializer.legacy('&').deserialize(
+            "&b                                       \n" +
             "&b   ____                _           _   \n" +
             "&b  / ___|___  _ __ ___ | |__   __ _| |_ \n" +
             "&b | |   / _ \\| '_ ` _ \\| '_ \\ / _` | __|\n" +
