@@ -1,21 +1,27 @@
 package net.opmasterleo.combat;
 
-import lombok.Getter;
-import net.opmasterleo.combat.command.CombatCommand;
-import net.opmasterleo.combat.listener.*;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.List;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import lombok.Getter;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.opmasterleo.combat.command.CombatCommand;
+import net.opmasterleo.combat.listener.CustomDeathMessageListener;
+import net.opmasterleo.combat.listener.EntityDamageByEntityListener;
+import net.opmasterleo.combat.listener.PlayerCommandPreprocessListener;
+import net.opmasterleo.combat.listener.PlayerDeathListener;
+import net.opmasterleo.combat.listener.PlayerMoveListener;
+import net.opmasterleo.combat.listener.PlayerQuitListener;
+import net.opmasterleo.combat.listener.PlayerTeleportListener;
 
 @Getter
 public class Combat extends JavaPlugin {
@@ -27,57 +33,151 @@ public class Combat extends JavaPlugin {
     private boolean enableWorldsEnabled;
     private List<String> enabledWorlds;
     private boolean combatEnabled;
-    private WorldGuardUtil worldGuardUtil = null;
+    private WorldGuardUtil worldGuardUtil;
+    private PlayerMoveListener playerMoveListener;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         instance = this;
-        enableWorldsEnabled = getConfig().getBoolean("EnabledWorlds.enabled", false);
-        enabledWorlds = getConfig().getStringList("EnabledWorlds.worlds");
-        combatEnabled = getConfig().getBoolean("Enabled", true);
+        reloadCombatConfig();
 
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
             worldGuardUtil = new WorldGuardUtil();
         }
 
-        Bukkit.getPluginManager().registerEvents(new EntityDamageByEntityListener(), instance);
-        Bukkit.getPluginManager().registerEvents(new PlayerCommandPreprocessListener(), instance);
-        Bukkit.getPluginManager().registerEvents(new PlayerMoveListener(), instance);
-        Bukkit.getPluginManager().registerEvents(new PlayerQuitListener(), instance);
-        Bukkit.getPluginManager().registerEvents(new PlayerTeleportListener(), instance);
-        Bukkit.getPluginManager().registerEvents(new PlayerDeathListener(), instance);
-        Bukkit.getPluginManager().registerEvents(new CustomDeathMessageListener(), instance);
-
+        registerListeners();
         getCommand("combat").setExecutor(new CombatCommand());
+        startCombatTimer();
+        sendStartupMessage();
+    }
 
+    private void registerListeners() {
+        playerMoveListener = new PlayerMoveListener();
+        Bukkit.getPluginManager().registerEvents(new EntityDamageByEntityListener(), this);
+        Bukkit.getPluginManager().registerEvents(new PlayerCommandPreprocessListener(), this);
+        Bukkit.getPluginManager().registerEvents(playerMoveListener, this);
+        Bukkit.getPluginManager().registerEvents(new PlayerQuitListener(), this);
+        Bukkit.getPluginManager().registerEvents(new PlayerTeleportListener(), this);
+        Bukkit.getPluginManager().registerEvents(new PlayerDeathListener(), this);
+        Bukkit.getPluginManager().registerEvents(new CustomDeathMessageListener(), this);
+    }
+
+    private void startCombatTimer() {
         Bukkit.getScheduler().scheduleAsyncRepeatingTask(this, () -> {
             long currentTime = System.currentTimeMillis();
             Iterator<Map.Entry<UUID, Long>> iterator = combatPlayers.entrySet().iterator();
+            
             while (iterator.hasNext()) {
                 Map.Entry<UUID, Long> entry = iterator.next();
                 UUID uuid = entry.getKey();
                 Player player = Bukkit.getPlayer(uuid);
+                
                 if (player == null) {
                     iterator.remove();
+                    combatOpponents.remove(uuid);
                     continue;
                 }
+                
                 if (currentTime >= entry.getValue()) {
-                    iterator.remove();
-                    if (!getConfig().getString("Messages.NoLongerInCombat", "").isEmpty()) {
-                        player.sendMessage(getMessage("Messages.Prefix") + getMessage("Messages.NoLongerInCombat"));
-                    }
-                    UUID opponentUUID = combatOpponents.remove(uuid);
-                    if (opponentUUID != null) {
-                        combatOpponents.remove(opponentUUID);
-                    }
+                    handleCombatEnd(player, iterator);
                 } else {
-                    long seconds = (entry.getValue() - currentTime) / 1000;
-                    player.sendActionBar(getMessage("ActionBar.Format").replace("%seconds%", String.valueOf(seconds + 1)));
+                    updateActionBar(player, entry.getValue(), currentTime);
                 }
             }
         }, 20, 20);
+    }
 
+    private void handleCombatEnd(Player player, Iterator<Map.Entry<UUID, Long>> iterator) {
+        iterator.remove();
+        UUID opponentUUID = combatOpponents.remove(player.getUniqueId());
+        if (opponentUUID != null) {
+            combatOpponents.remove(opponentUUID);
+        }
+        sendCombatEndMessage(player);
+    }
+
+    private void sendCombatEndMessage(Player player) {
+        if (!getConfig().getString("Messages.NoLongerInCombat", "").isEmpty()) {
+            player.sendMessage(getMessage("Messages.Prefix") + getMessage("Messages.NoLongerInCombat"));
+        }
+    }
+
+    private void updateActionBar(Player player, long endTime, long currentTime) {
+        long seconds = (endTime - currentTime) / 1000;
+        player.sendActionBar(getMessage("ActionBar.Format").replace("%seconds%", String.valueOf(seconds + 1)));
+    }
+
+    public boolean isCombatEnabledInWorld(Player player) {
+        return !enableWorldsEnabled || enabledWorlds.contains(player.getWorld().getName());
+    }
+
+    public boolean isInCombat(Player player) {
+        return combatPlayers.getOrDefault(player.getUniqueId(), 0L) > System.currentTimeMillis();
+    }
+
+    public void setCombat(Player player, Player opponent) {
+        if (!combatEnabled || !isCombatEnabledInWorld(player)) return;
+        if (shouldBypass(player)) return;
+
+        long duration = System.currentTimeMillis() + 1000 * getConfig().getLong("Duration", 0);
+        updateCombatState(player, opponent, duration);
+        sendCombatStartMessage(player);
+        restrictMovement(player);
+    }
+
+    private boolean shouldBypass(Player player) {
+        return (getConfig().getBoolean("ignore-op", true) && player.isOp()) 
+            || player.getGameMode() == GameMode.CREATIVE 
+            || player.getGameMode() == GameMode.SPECTATOR;
+    }
+
+    private void updateCombatState(Player player, Player opponent, long duration) {
+        combatPlayers.put(player.getUniqueId(), duration);
+        combatPlayers.put(opponent.getUniqueId(), duration);
+        combatOpponents.put(player.getUniqueId(), opponent.getUniqueId());
+        combatOpponents.put(opponent.getUniqueId(), player.getUniqueId());
+    }
+
+    private void sendCombatStartMessage(Player player) {
+        if (!isInCombat(player) && !getConfig().getString("Messages.NowInCombat", "").isEmpty()) {
+            player.sendMessage(getMessage("Messages.Prefix") + getMessage("Messages.NowInCombat"));
+        }
+    }
+
+    private void restrictMovement(Player player) {
+        player.setGliding(false);
+        player.setFlying(false);
+        player.setAllowFlight(false);
+    }
+
+    public Player getCombatOpponent(Player player) {
+        return Bukkit.getPlayer(combatOpponents.get(player.getUniqueId()));
+    }
+
+    public void keepPlayerInCombat(Player player) {
+        if (isInCombat(player)) {
+            combatPlayers.put(player.getUniqueId(), 
+                System.currentTimeMillis() + 1000 * getConfig().getLong("Duration", 0));
+        }
+    }
+
+    public String getMessage(String key) {
+        String message = getConfig().getString(key, "");
+        return LegacyComponentSerializer.legacySection().serialize(
+            LegacyComponentSerializer.legacy('&').deserialize(message)
+        );
+    }
+
+    public void reloadCombatConfig() {
+        reloadConfig();
+        enableWorldsEnabled = getConfig().getBoolean("EnabledWorlds.enabled", false);
+        enabledWorlds = getConfig().getStringList("EnabledWorlds.worlds");
+        combatEnabled = getConfig().getBoolean("Enabled", true);
+        if (playerMoveListener != null) playerMoveListener.reloadConfig();
+    }
+
+    private void sendStartupMessage() {
         String version = getDescription().getVersion();
         Component header = LegacyComponentSerializer.legacy('&').deserialize(
             "&b                                       \n" +
@@ -90,64 +190,7 @@ public class Combat extends JavaPlugin {
             "&aCombat Plugin Enabled! &7Version: &f" + version + "\n" +
             "&7Developed by &bVertrauterDavid&7, remade by &eopmasterleo"
         );
-        
         Bukkit.getConsoleSender().sendMessage(header);
-    }
-
-    public boolean isCombatEnabledInWorld(Player player) {
-        if (!enableWorldsEnabled) return true;
-        return enabledWorlds.contains(player.getWorld().getName());
-    }
-
-    public boolean isInCombat(Player player) {
-        return combatPlayers.getOrDefault(player.getUniqueId(), 0L) > System.currentTimeMillis();
-    }
-
-    public void setCombat(Player player, Player opponent) {
-        if (!combatEnabled || !isCombatEnabledInWorld(player)) return;
-        if ((getConfig().getBoolean("ignore-op", true) && player.isOp()) || player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR)
-            return;
-        if (!isInCombat(player) && !getConfig().getString("Messages.NowInCombat", "").isEmpty()) {
-            player.sendMessage(getMessage("Messages.Prefix") + getMessage("Messages.NowInCombat"));
-        }
-        combatPlayers.put(player.getUniqueId(), System.currentTimeMillis() + 1000 * getConfig().getLong("Duration", 0));
-        combatOpponents.put(player.getUniqueId(), opponent.getUniqueId());
-        combatPlayers.put(opponent.getUniqueId(), System.currentTimeMillis() + 1000 * getConfig().getLong("Duration", 0));
-        combatOpponents.put(opponent.getUniqueId(), player.getUniqueId());
-        player.setGliding(false);
-        player.setFlying(false);
-        player.setAllowFlight(false);
-    }
-
-    public Player getCombatOpponent(Player player) {
-        UUID opponentUUID = combatOpponents.get(player.getUniqueId());
-        return opponentUUID == null ? null : Bukkit.getPlayer(opponentUUID);
-    }
-
-    public void keepPlayerInCombat(Player player) {
-        if (!isInCombat(player)) return;
-        combatPlayers.put(player.getUniqueId(), System.currentTimeMillis() + 1000 * getConfig().getLong("Duration", 0));
-    }
-
-    public String getMessage(String key) {
-        return translateColorCodes(getConfig().getString(key, ""));
-    }
-
-    private String translateColorCodes(String message) {
-        return LegacyComponentSerializer.legacySection().serialize(
-            LegacyComponentSerializer.legacy('&').deserialize(message)
-        );
-    }
-
-    public void reloadCombatConfig() {
-        reloadConfig();
-        enableWorldsEnabled = getConfig().getBoolean("EnabledWorlds.enabled", false);
-        enabledWorlds = getConfig().getStringList("EnabledWorlds.worlds");
-        combatEnabled = getConfig().getBoolean("Enabled", true);
-    }
-
-    public boolean isCombatEnabled() {
-        return combatEnabled;
     }
 
     public WorldGuardUtil getWorldGuardUtil() {
