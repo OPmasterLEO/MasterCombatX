@@ -32,11 +32,10 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
                 break;
 
             case "toggle":
-                boolean newState = !Combat.getInstance().isCombatEnabled();
-                Combat.getInstance().getConfig().set("Enabled", newState);
-                Combat.getInstance().saveConfig();
-                Combat.getInstance().reloadCombatConfig();
-                sender.sendMessage(ChatColor.GOLD + "Combat " + (newState ? "enabled" : "disabled"));
+                Combat combat = Combat.getInstance();
+                combat.setCombatEnabled(!combat.isCombatEnabled());
+                String status = combat.isCombatEnabled() ? ChatColor.GREEN + "enabled" : ChatColor.RED + "disabled";
+                sender.sendMessage(ChatColor.YELLOW + "Combat has been " + status + ChatColor.YELLOW + ".");
                 break;
 
             default:

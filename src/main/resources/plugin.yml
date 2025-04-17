@@ -3,6 +3,7 @@ main: net.opmasterleo.combat.Combat
 version: ${project.version}
 api-version: 1.21
 author: OPmasterLEO
+folia-supported: true
 softdepend:
   - WorldGuard
 commands:

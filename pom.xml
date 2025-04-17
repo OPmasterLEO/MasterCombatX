@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.opmasterleo.combat</groupId>
-    <artifactId>Combat</artifactId>
-    <version>2.4</version>
+    <artifactId>ModernCombat</artifactId>
+    <version>3.3</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -80,6 +80,12 @@
                     <artifactId>bukkit</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>dev.folia</groupId>
+            <artifactId>folia-api</artifactId>
+            <version>1.20.1-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>
