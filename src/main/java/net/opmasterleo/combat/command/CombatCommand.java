@@ -1,6 +1,7 @@
 package net.opmasterleo.combat.command;
 
 import net.opmasterleo.combat.Combat;
+import net.opmasterleo.combat.Update; // Add this import
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -21,7 +22,13 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            sendHelp(sender);
+            String pluginName = Combat.getInstance().getDescription().getName();
+            String pluginVersion = Combat.getInstance().getDescription().getVersion();
+            String pluginAuthor = Combat.getInstance().getDescription().getAuthors().get(0);
+
+            sender.sendMessage(ChatColor.AQUA + "[" + pluginName + "]» " + ChatColor.GRAY +
+                    "This server is running " + pluginName + " version " + ChatColor.GREEN + "v" + pluginVersion +
+                    ChatColor.GRAY + " by " + ChatColor.YELLOW + pluginAuthor);
             return true;
         }
 
@@ -38,6 +45,11 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ChatColor.YELLOW + "Combat has been " + status + ChatColor.YELLOW + ".");
                 break;
 
+            case "update":
+                sender.sendMessage(ChatColor.YELLOW + "Downloading and applying the update...");
+                Update.downloadAndReplaceJar(Combat.getInstance());
+                break;
+
             default:
                 sendHelp(sender);
         }
@@ -48,13 +60,13 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ChatColor.RED + "Usage:");
         sender.sendMessage(ChatColor.GRAY + "/combat reload");
         sender.sendMessage(ChatColor.GRAY + "/combat toggle");
+        sender.sendMessage(ChatColor.GRAY + "/combat update");
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String label, String[] args) {
         List<String> completions = new ArrayList<>();
 
-        // If no arguments are provided, suggest "reload" and "toggle"
         if (args.length == 1) {
             if ("reload".startsWith(args[0].toLowerCase())) {
                 completions.add("reload");

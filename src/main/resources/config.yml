@@ -7,6 +7,9 @@
 #
 # ---------------------------------------------------------------------------
 
+# Notify opped players about updates when they join the server
+update-notify-chat: false
+
 # Duration of the combat timer in seconds
 Duration: 15
 

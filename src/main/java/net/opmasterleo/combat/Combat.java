@@ -9,6 +9,9 @@ import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler;
@@ -25,7 +28,7 @@ import net.opmasterleo.combat.listener.PlayerQuitListener;
 import net.opmasterleo.combat.listener.PlayerTeleportListener;
 
 @Getter
-public class Combat extends JavaPlugin {
+public class Combat extends JavaPlugin implements Listener {
 
     @Getter
     private static Combat instance;
@@ -52,6 +55,7 @@ public class Combat extends JavaPlugin {
         getCommand("combat").setExecutor(new CombatCommand());
         startCombatTimer();
         sendStartupMessage();
+        Update.checkForUpdates(this);
     }
 
     @Override
@@ -81,6 +85,28 @@ public class Combat extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new PlayerTeleportListener(), this);
         Bukkit.getPluginManager().registerEvents(new PlayerDeathListener(), this);
         Bukkit.getPluginManager().registerEvents(new CustomDeathMessageListener(), this);
+        Bukkit.getPluginManager().registerEvents(this, this);
+    }
+
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        if (player.isOp() && getConfig().getBoolean("update-notify-chat", false)) {
+            String pluginName = getDescription().getName();
+            String currentVersion = getDescription().getVersion();
+
+            if (Update.getLatestVersion() == null) {
+                player.sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
+                return;
+            }
+
+            if (currentVersion.equalsIgnoreCase(Update.getLatestVersion())) {
+                player.sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " version.");
+            } else {
+                player.sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version " + currentVersion +
+                        " but the latest is " + Update.getLatestVersion() + ".");
+            }
+        }
     }
 
     private void startCombatTimer() {
@@ -234,10 +260,11 @@ public class Combat extends JavaPlugin {
 
     private void sendStartupMessage() {
         String version = getDescription().getVersion();
-        boolean isFolia = Bukkit.getServer().getClass().getName().equals("io.papermc.paper.threadedregions.RegionizedServer");
+        boolean isFolia = Update.isFolia();
+        String serverJarName = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];
         String systemMessage = isFolia
-            ? "&aDetected &fFolia &7- Using multi-threaded task system."
-            : "&aDetected &fPaper &7- Using standard task scheduler.";
+            ? "&cDetected &cFoliaMC &7- Using multi-threaded task system."
+            : "&aDetected &f" + serverJarName + " &7- Using standard task scheduler.";
 
         boolean worldGuardDetected = Bukkit.getPluginManager().getPlugin("WorldGuard") != null;
         String worldGuardMessage = worldGuardDetected

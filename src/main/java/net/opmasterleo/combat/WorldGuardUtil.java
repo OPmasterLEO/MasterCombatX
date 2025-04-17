@@ -1,13 +1,15 @@
 package net.opmasterleo.combat;
 
+import org.bukkit.entity.Player;
+
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.ApplicableRegionSet;
 import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.protection.regions.RegionQuery;
+
 import lombok.Getter;
-import org.bukkit.entity.Player;
 
 @Getter
 public class WorldGuardUtil {
