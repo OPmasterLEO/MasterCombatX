@@ -61,7 +61,6 @@ public class Combat extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        Bukkit.getConsoleSender().sendMessage("§cDisabling ModernCombat plugin...");
         combatPlayers.clear();
         combatOpponents.clear();
         lastActionBarSeconds.clear();

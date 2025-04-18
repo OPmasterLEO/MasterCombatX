@@ -1,12 +1,16 @@
 package net.opmasterleo.combat;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-
-import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
 
 public class Update {
 
@@ -32,17 +36,18 @@ public class Update {
         if (isFolia()) {
             Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
                 String pluginName = plugin.getDescription().getName();
-                String currentVersion = plugin.getDescription().getVersion();
+                String currentVersion = plugin.getDescription().getVersion().replaceAll("[^0-9.]", ""); // Normalize version
+                String normalizedLatestVersion = latestVersion != null ? latestVersion.replaceAll("[^0-9.]", "") : null;
 
                 if (latestVersion == null) {
                     Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
                     return;
                 }
 
-                if (isNewerVersion(currentVersion, latestVersion)) {
+                if (isNewerVersion(currentVersion, normalizedLatestVersion)) {
                     Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» Unable to check your version! Self-built? Build information: Version " + currentVersion + ", latest: " + latestVersion);
-                } else if (currentVersion.equalsIgnoreCase(latestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " version.");
+                } else if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName);
                 } else {
                     Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version " + currentVersion +
                             " but the latest is " + latestVersion + ".");
@@ -52,17 +57,18 @@ public class Update {
         } else {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 String pluginName = plugin.getDescription().getName();
-                String currentVersion = plugin.getDescription().getVersion();
+                String currentVersion = plugin.getDescription().getVersion().replaceAll("[^0-9.]", ""); // Normalize version
+                String normalizedLatestVersion = latestVersion != null ? latestVersion.replaceAll("[^0-9.]", "") : null;
 
                 if (latestVersion == null) {
                     Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
                     return;
                 }
 
-                if (isNewerVersion(currentVersion, latestVersion)) {
+                if (isNewerVersion(currentVersion, normalizedLatestVersion)) {
                     Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» Unable to check your version! Self-built? Build information: Version " + currentVersion + ", latest: " + latestVersion);
-                } else if (currentVersion.equalsIgnoreCase(latestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " version.");
+                } else if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName);
                 } else {
                     Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version " + currentVersion +
                             " but the latest is " + latestVersion + ".");
