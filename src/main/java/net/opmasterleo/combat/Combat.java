@@ -56,6 +56,7 @@ public class Combat extends JavaPlugin implements Listener {
         startCombatTimer();
         sendStartupMessage();
         Update.checkForUpdates(this);
+        Update.notifyOnServerOnline(this);
     }
 
     @Override
@@ -248,9 +249,12 @@ public class Combat extends JavaPlugin implements Listener {
 
     public void reloadCombatConfig() {
         reloadConfig();
-        enableWorldsEnabled = getConfig().getBoolean("EnabledWorlds.enabled", false);
+        enableWorldsEnabled = getConfig().getBoolean("EnabledWorlds.enabled", false); // Default to false
         enabledWorlds = getConfig().getStringList("EnabledWorlds.worlds");
-        combatEnabled = getConfig().getBoolean("Enabled", true);
+        if (enabledWorlds == null || enabledWorlds.isEmpty()) {
+            enabledWorlds = List.of("world"); // Default to "world" if not specified
+        }
+        combatEnabled = getConfig().getBoolean("Enabled", true); // Default to true
         if (playerMoveListener != null) playerMoveListener.reloadConfig();
     }
 
@@ -260,17 +264,27 @@ public class Combat extends JavaPlugin implements Listener {
 
     private void sendStartupMessage() {
         String version = getDescription().getVersion();
+        String serverJarName;
         boolean isFolia = Update.isFolia();
-        String serverJarName = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];
+
+        try {
+            String[] packageParts = Bukkit.getServer().getClass().getPackage().getName().split("\\.");
+            serverJarName = packageParts.length > 3 ? packageParts[3] : (isFolia ? "Folia" : "Paper");
+        } catch (Exception e) {
+            serverJarName = isFolia ? "Folia" : "Paper";
+        }
+
         String systemMessage = isFolia
-            ? "&cDetected &cFoliaMC &7- Using multi-threaded task system."
+            ? "&cDetected &c" + serverJarName + " &7- Using multi-threaded task system."
             : "&aDetected &f" + serverJarName + " &7- Using standard task scheduler.";
 
         boolean worldGuardDetected = Bukkit.getPluginManager().getPlugin("WorldGuard") != null;
-        String worldGuardMessage = worldGuardDetected
-            ? "WorldGuard detected: Hooking with WorldGuard"
-            : "WorldGuard not detected: Canceling hook";
-            
+        if (worldGuardDetected) {
+            Bukkit.getConsoleSender().sendMessage("§cINFO §8» §aWorldGuard loaded!");
+        } else {
+            Bukkit.getConsoleSender().sendMessage("§cINFO §8» §aWorldGuard not loaded!");
+        }
+
         Component header = LegacyComponentSerializer.legacy('&').deserialize(
             "&b                                       \n" +
             "&b   ____                _           _   \n" +
@@ -281,9 +295,7 @@ public class Combat extends JavaPlugin implements Listener {
             "&7                                        \n" +
             "&aModernCombat Plugin Enabled! &7Version: &f" + version + "\n" +
             "&7Developed & remade by &bKaleshnikk\n" +
-            systemMessage + "\n" +
-            "&7-------------------------------------------------------------\n" +
-            "&a" + worldGuardMessage
+            systemMessage
         );
         Bukkit.getConsoleSender().sendMessage(header);
     }

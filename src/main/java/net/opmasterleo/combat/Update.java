@@ -29,22 +29,47 @@ public class Update {
     }
 
     public static void notifyOnServerOnline(Plugin plugin) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            String pluginName = plugin.getDescription().getName();
-            String currentVersion = plugin.getDescription().getVersion();
-            if (latestVersion == null) {
-                Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
-                return;
-            }
+        if (isFolia()) {
+            Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
+                String pluginName = plugin.getDescription().getName();
+                String currentVersion = plugin.getDescription().getVersion();
 
-            if (currentVersion.equalsIgnoreCase(latestVersion)) {
-                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " version.");
-            } else {
-                Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version " + currentVersion +
-                        " but the latest is " + latestVersion + ".");
-                Bukkit.getConsoleSender().sendMessage("§eUse /combat update to update to the latest version.");
-            }
-        }, 20L * 10);
+                if (latestVersion == null) {
+                    Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
+                    return;
+                }
+
+                if (isNewerVersion(currentVersion, latestVersion)) {
+                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» Unable to check your version! Self-built? Build information: Version " + currentVersion + ", latest: " + latestVersion);
+                } else if (currentVersion.equalsIgnoreCase(latestVersion)) {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " version.");
+                } else {
+                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version " + currentVersion +
+                            " but the latest is " + latestVersion + ".");
+                    Bukkit.getConsoleSender().sendMessage("§eUse /combat update to update to the latest version.");
+                }
+            }, 20L * 3); // 3 seconds delay
+        } else {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                String pluginName = plugin.getDescription().getName();
+                String currentVersion = plugin.getDescription().getVersion();
+
+                if (latestVersion == null) {
+                    Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
+                    return;
+                }
+
+                if (isNewerVersion(currentVersion, latestVersion)) {
+                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» Unable to check your version! Self-built? Build information: Version " + currentVersion + ", latest: " + latestVersion);
+                } else if (currentVersion.equalsIgnoreCase(latestVersion)) {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " version.");
+                } else {
+                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version " + currentVersion +
+                            " but the latest is " + latestVersion + ".");
+                    Bukkit.getConsoleSender().sendMessage("§eUse /combat update to update to the latest version.");
+                }
+            }, 20L * 3); // 3 seconds delay
+        }
     }
 
     public static void notifyOnPlayerJoin(Player player, Plugin plugin) {
