@@ -181,17 +181,28 @@ public class Update {
             }
 
             if (tempFile.exists()) {
-                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Download complete. Replacing the old jar...");
-                if (pluginFile.delete() && tempFile.renameTo(pluginFile)) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Update successful! Please restart your server to apply the changes.");
+                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Download complete. Attempting to replace the old jar...");
+                File renamedFile = new File(pluginFile.getParent(), pluginName + "-" + latestVersion + ".jar");
+                boolean oldFileDeleted = pluginFile.delete();
+                boolean newFileRenamed = tempFile.renameTo(renamedFile);
+
+                if (oldFileDeleted && newFileRenamed) {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Update successful! New jar: " + renamedFile.getName());
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Please restart your server to apply the changes.");
                 } else {
-                    Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to replace the old jar. Please replace it manually.");
+                    if (!oldFileDeleted) {
+                        Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to delete the old jar file: " + pluginFile.getName());
+                    }
+                    if (!newFileRenamed) {
+                        Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to rename the new jar file to: " + renamedFile.getName());
+                    }
+                    Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Update failed. Please replace the jar manually.");
                 }
             } else {
-                Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to download the latest jar.");
+                Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to download the latest jar. File does not exist.");
             }
         } catch (Exception e) {
-            Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» An error occurred while downloading the update: " + e.getMessage());
+            Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» An error occurred while downloading or replacing the jar: " + e.getMessage());
         }
     }
 
