@@ -16,7 +16,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler;
 import lombok.Getter;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.opmasterleo.combat.command.CombatCommand;
 import net.opmasterleo.combat.listener.CustomDeathMessageListener;
@@ -263,6 +262,7 @@ public class Combat extends JavaPlugin implements Listener {
 
     private void sendStartupMessage() {
         String version = getDescription().getVersion();
+        String pluginName = getDescription().getName();
         String serverJarName;
         boolean isFolia = Update.isFolia();
 
@@ -273,10 +273,6 @@ public class Combat extends JavaPlugin implements Listener {
             serverJarName = isFolia ? "Folia" : "Paper";
         }
 
-        String systemMessage = isFolia
-            ? "&cDetected &c" + serverJarName + " &7- Using multi-threaded task system."
-            : "&aDetected &f" + serverJarName + " &7- Using standard task scheduler.";
-
         boolean worldGuardDetected = Bukkit.getPluginManager().getPlugin("WorldGuard") != null;
         if (worldGuardDetected) {
             Bukkit.getConsoleSender().sendMessage("§cINFO §8» §aWorldGuard loaded!");
@@ -284,19 +280,16 @@ public class Combat extends JavaPlugin implements Listener {
             Bukkit.getConsoleSender().sendMessage("§cINFO §8» §aWorldGuard not loaded!");
         }
 
-        Component header = LegacyComponentSerializer.legacy('&').deserialize(
-            "&b                                       \n" +
-            "&b   ____                _           _   \n" +
-            "&b  / ___|___  _ __ ___ | |__   __ _| |_ \n" +
-            "&b | |   / _ \\| '_ ` _ \\| '_ \\ / _` | __|\n" +
-            "&b | |__| (_) | | | | | | |_) | (_| | |_ \n" +
-            "&b  \\____\\___/|_| |_| |_|_.__/ \\__,_|\\__|\n" +
-            "&7                                        \n" +
-            "&aModernCombat Plugin Enabled! &7Version: &f" + version + "\n" +
-            "&7Developed & remade by &bKaleshnikk\n" +
-            systemMessage
-        );
-        Bukkit.getConsoleSender().sendMessage(header);
+        String asciiArt =
+            "&b   ____                _           _               \n" +
+            "&b  / ___|___  _ __ ___ | |__   __ _| |_             \n" +
+            "&b | |   / _ \\| '_ ` _ \\| '_ \\ / _` | __|   " + pluginName + " v" + version + "\n" +
+            "&b | |__| (_) | | | | | | |_) | (_| | |_    Currently using " + serverJarName + "\n" +
+            "&b  \\____\\___/|_| |_| |_|_.__/ \\__,_|\\__|   \n";
+
+        for (String line : asciiArt.split("\n")) {
+            Bukkit.getConsoleSender().sendMessage(LegacyComponentSerializer.legacy('&').deserialize(line));
+        }
     }
 
     public WorldGuardUtil getWorldGuardUtil() {
