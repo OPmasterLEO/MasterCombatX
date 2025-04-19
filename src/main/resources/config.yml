@@ -1,9 +1,9 @@
 # ---------------------------------------------------------------------------
 #
-#         Developed by VertrauterDavid, remade by opmasterleo
+#         Developed by OPmasterLEO
 #
-#         https://vertrauterdavid.net/
 #         https://github.com/Kaleshnikk
+#         https://builtbybit.com/resources/moderncombat.65133/
 #
 # ---------------------------------------------------------------------------
 
@@ -13,7 +13,10 @@ update-notify-chat: false
 # Duration of the combat timer in seconds
 Duration: 15
 
-# Enable combat only in specific worlds
+# Enable combat only in specific worlds | HIGHLY EXPERIMENTAL
+# This feature is not fully tested and may cause issues.
+# Use at your own risk!
+# If you want to enable this feature, set 'enabled' to true and specify the worlds.
 EnabledWorlds:
   enabled: false
   worlds:
@@ -26,9 +29,11 @@ Messages:
   NoLongerInCombat: '' # empty = disabled
   LogoutInCombat: '' # empty = disabled
 
-
+# Enable custom death messages
+# This feature does not modify vanilla death messages.
+# It only adds a prefix to the death message.
 CustomDeathMessage:
-  enabled: false # Enables custom death messages
+  enabled: false
   prefix: '&c☠ '  
 
 # Disable Combat for all with OP permissions
