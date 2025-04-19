@@ -36,8 +36,8 @@ public class Update {
         if (isFolia()) {
             Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
                 String pluginName = plugin.getDescription().getName();
-                String currentVersion = plugin.getDescription().getVersion().replaceAll("[^0-9.]", ""); // Normalize version
-                String normalizedLatestVersion = latestVersion != null ? latestVersion.replaceAll("[^0-9.]", "") : null;
+                String currentVersion = normalizeVersion(plugin.getDescription().getVersion());
+                String normalizedLatestVersion = latestVersion != null ? normalizeVersion(latestVersion) : null;
 
                 if (latestVersion == null) {
                     Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
@@ -45,20 +45,22 @@ public class Update {
                 }
 
                 if (isNewerVersion(currentVersion, normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» Unable to check your version! Self-built? Build information: Version " + currentVersion + ", latest: " + latestVersion);
+                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» Unable to check your version! Self-built? Build information: Version v" + currentVersion + ", latest: v" + normalizedLatestVersion);
                 } else if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName);
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " (v" + currentVersion + ")");
+                } else if (currentVersion.compareTo(normalizedLatestVersion) > 0) {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running a newer version of " + pluginName + " (v" + currentVersion + ") but the latest is (v" + normalizedLatestVersion + ").");
                 } else {
-                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version " + currentVersion +
-                            " but the latest is " + latestVersion + ".");
+                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version v" + currentVersion +
+                            " but the latest is (v" + normalizedLatestVersion + ").");
                     Bukkit.getConsoleSender().sendMessage("§eUse /combat update to update to the latest version.");
                 }
-            }, 20L * 3); // 3 seconds delay
+            }, 20L * 3);
         } else {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 String pluginName = plugin.getDescription().getName();
-                String currentVersion = plugin.getDescription().getVersion().replaceAll("[^0-9.]", ""); // Normalize version
-                String normalizedLatestVersion = latestVersion != null ? latestVersion.replaceAll("[^0-9.]", "") : null;
+                String currentVersion = normalizeVersion(plugin.getDescription().getVersion());
+                String normalizedLatestVersion = latestVersion != null ? normalizeVersion(latestVersion) : null;
 
                 if (latestVersion == null) {
                     Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
@@ -66,15 +68,17 @@ public class Update {
                 }
 
                 if (isNewerVersion(currentVersion, normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» Unable to check your version! Self-built? Build information: Version " + currentVersion + ", latest: " + latestVersion);
+                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» Unable to check your version! Self-built? Build information: Version v" + currentVersion + ", latest: v" + normalizedLatestVersion);
                 } else if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName);
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " (v" + currentVersion + ")");
+                } else if (currentVersion.compareTo(normalizedLatestVersion) > 0) {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running a newer version of " + pluginName + " (v" + currentVersion + ") but the latest is (v" + normalizedLatestVersion + ").");
                 } else {
-                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version " + currentVersion +
-                            " but the latest is " + latestVersion + ".");
+                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version v" + currentVersion +
+                            " but the latest is (v" + normalizedLatestVersion + ").");
                     Bukkit.getConsoleSender().sendMessage("§eUse /combat update to update to the latest version.");
                 }
-            }, 20L * 3); // 3 seconds delay
+            }, 20L * 3);
         }
     }
 
@@ -88,18 +92,21 @@ public class Update {
         }
 
         String pluginName = plugin.getDescription().getName();
-        String currentVersion = plugin.getDescription().getVersion();
+        String currentVersion = normalizeVersion(plugin.getDescription().getVersion());
+        String normalizedLatestVersion = latestVersion != null ? normalizeVersion(latestVersion) : null;
 
         if (latestVersion == null) {
             player.sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
             return;
         }
 
-        if (currentVersion.equalsIgnoreCase(latestVersion)) {
-            player.sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " version.");
+        if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
+            player.sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " (v" + currentVersion + ").");
+        } else if (currentVersion.compareTo(normalizedLatestVersion) > 0) {
+            player.sendMessage("§a[" + pluginName + "]» This server is running a newer version of " + pluginName + " (v" + currentVersion + ") but the latest is (v" + normalizedLatestVersion + ").");
         } else {
-            player.sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version " + currentVersion +
-                    " but the latest is " + latestVersion + ".");
+            player.sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version v" + currentVersion +
+                    " but the latest is (v" + normalizedLatestVersion + ").");
             player.sendMessage("§e[" + pluginName + "]» Run /combat update again if you confirm to update the plugin version.");
         }
     }
@@ -111,17 +118,23 @@ public class Update {
             return;
         }
 
+        String currentVersion = normalizeVersion(plugin.getDescription().getVersion());
+        String normalizedLatestVersion = normalizeVersion(latestVersion);
+
+        if (!isNewerVersion(currentVersion, normalizedLatestVersion)) {
+            if (currentVersion.compareTo(normalizedLatestVersion) > 0) {
+                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running a newer version of " + pluginName + " (v" + currentVersion + ") but the latest is (v" + normalizedLatestVersion + ").");
+            } else {
+                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest version of " + pluginName + " (v" + currentVersion + ").");
+            }
+            return;
+        }
+
         long currentTime = System.currentTimeMillis();
         if (updateConfirmationRequired || currentTime > confirmationTimeout) {
             Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» Run /combat update again if you confirm to update the plugin version.");
             updateConfirmationRequired = false;
-            confirmationTimeout = currentTime + 10000; // Set timeout to 10 seconds
-            return;
-        }
-
-        String currentVersion = plugin.getDescription().getVersion();
-        if (isNewerVersion(currentVersion, latestVersion)) {
-            Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running a newer version (" + currentVersion + ") than the latest (" + latestVersion + "), skipping update.");
+            confirmationTimeout = currentTime + 10000;
             return;
         }
 
@@ -164,7 +177,15 @@ public class Update {
         String pluginName = plugin.getDescription().getName();
         try {
             File pluginFile = new File(plugin.getClass().getProtectionDomain().getCodeSource().getLocation().toURI());
-            File tempFile = new File(pluginFile.getParent(), pluginName + "-" + latestVersion + ".jar");
+            File updateFolder = new File(pluginFile.getParentFile().getParentFile(), "update");
+            if (!updateFolder.exists() && !updateFolder.mkdirs()) {
+                Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to create update folder.");
+                return;
+            }
+
+            // Ensure the latestVersion does not include the plugin name redundantly
+            String normalizedVersion = latestVersion.replace(pluginName + "-", "").replace(pluginName, "");
+            File tempFile = new File(updateFolder, pluginName + "-" + normalizedVersion + ".jar");
 
             HttpURLConnection connection = (HttpURLConnection) new URL(downloadUrl).openConnection();
             connection.setRequestMethod("GET");
@@ -181,28 +202,13 @@ public class Update {
             }
 
             if (tempFile.exists()) {
-                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Download complete. Attempting to replace the old jar...");
-                File renamedFile = new File(pluginFile.getParent(), pluginName + "-" + latestVersion + ".jar");
-                boolean oldFileDeleted = pluginFile.delete();
-                boolean newFileRenamed = tempFile.renameTo(renamedFile);
-
-                if (oldFileDeleted && newFileRenamed) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Update successful! New jar: " + renamedFile.getName());
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Please restart your server to apply the changes.");
-                } else {
-                    if (!oldFileDeleted) {
-                        Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to delete the old jar file: " + pluginFile.getName());
-                    }
-                    if (!newFileRenamed) {
-                        Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to rename the new jar file to: " + renamedFile.getName());
-                    }
-                    Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Update failed. Please replace the jar manually.");
-                }
+                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Download complete. The new version has been placed in the update folder.");
+                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Please restart your server to apply the update.");
             } else {
                 Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to download the latest jar. File does not exist.");
             }
         } catch (Exception e) {
-            Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» An error occurred while downloading or replacing the jar: " + e.getMessage());
+            Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» An error occurred while downloading the jar: " + e.getMessage());
         }
     }
 
@@ -213,6 +219,10 @@ public class Update {
         } catch (ClassNotFoundException e) {
             return false;
         }
+    }
+
+    private static String normalizeVersion(String version) {
+        return version.replaceAll("[^0-9.]", ""); // Remove non-numeric characters
     }
 
     private static String parseVersion(String jsonResponse) {
@@ -230,20 +240,23 @@ public class Update {
     }
 
     private static boolean isNewerVersion(String currentVersion, String latestVersion) {
-        currentVersion = currentVersion.replaceAll("[^0-9.]", "");
-        latestVersion = latestVersion.replaceAll("[^0-9.]", "");
+        currentVersion = normalizeVersion(currentVersion);
+        latestVersion = normalizeVersion(latestVersion);
 
         String[] currentParts = currentVersion.split("\\.");
         String[] latestParts = latestVersion.split("\\.");
+
         for (int i = 0; i < Math.max(currentParts.length, latestParts.length); i++) {
             int currentPart = i < currentParts.length ? Integer.parseInt(currentParts[i]) : 0;
             int latestPart = i < latestParts.length ? Integer.parseInt(latestParts[i]) : 0;
-            if (currentPart > latestPart) {
-                return true;
-            } else if (currentPart < latestPart) {
-                return false;
+
+            if (currentPart < latestPart) {
+                return true; // Latest version is newer
+            } else if (currentPart > latestPart) {
+                return false; // Current version is newer
             }
         }
-        return false;
+
+        return false; // Versions are equal
     }
 }
