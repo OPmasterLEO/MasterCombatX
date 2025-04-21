@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -56,6 +57,9 @@ public class Combat extends JavaPlugin implements Listener {
         sendStartupMessage();
         Update.checkForUpdates(this);
         Update.notifyOnServerOnline(this);
+
+        int pluginId = 25562;
+        Metrics metrics = new Metrics(this, pluginId);
     }
 
     @Override
@@ -247,12 +251,12 @@ public class Combat extends JavaPlugin implements Listener {
 
     public void reloadCombatConfig() {
         reloadConfig();
-        enableWorldsEnabled = getConfig().getBoolean("EnabledWorlds.enabled", false); // Default to false
+        enableWorldsEnabled = getConfig().getBoolean("EnabledWorlds.enabled", false);
         enabledWorlds = getConfig().getStringList("EnabledWorlds.worlds");
         if (enabledWorlds == null || enabledWorlds.isEmpty()) {
-            enabledWorlds = List.of("world"); // Default to "world" if not specified
+            enabledWorlds = List.of("world");
         }
-        combatEnabled = getConfig().getBoolean("Enabled", true); // Default to true
+        combatEnabled = getConfig().getBoolean("Enabled", true);
         if (playerMoveListener != null) playerMoveListener.reloadConfig();
     }
 
