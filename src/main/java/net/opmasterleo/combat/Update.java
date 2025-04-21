@@ -44,16 +44,13 @@ public class Update {
                     return;
                 }
 
-                if (isNewerVersion(currentVersion, normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» Unable to check your version! Self-built? Build information: Version v" + currentVersion + ", latest: v" + normalizedLatestVersion);
-                } else if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " (v" + currentVersion + ")");
-                } else if (currentVersion.compareTo(normalizedLatestVersion) > 0) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running a newer version of " + pluginName + " (v" + currentVersion + ") but the latest is (v" + normalizedLatestVersion + ").");
-                } else {
-                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version v" + currentVersion +
-                            " but the latest is (v" + normalizedLatestVersion + ").");
+                if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " (v" + currentVersion + ").");
+                } else if (currentVersion.compareTo(normalizedLatestVersion) < 0) {
+                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» An update is required, installed version v" + currentVersion + ", but latest is v" + normalizedLatestVersion + ".");
                     Bukkit.getConsoleSender().sendMessage("§eUse /combat update to update to the latest version.");
+                } else {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running a newer version of " + pluginName + " (v" + currentVersion + ") but the latest is (v" + normalizedLatestVersion + ").");
                 }
             }, 20L * 3);
         } else {
@@ -67,16 +64,13 @@ public class Update {
                     return;
                 }
 
-                if (isNewerVersion(currentVersion, normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» Unable to check your version! Self-built? Build information: Version v" + currentVersion + ", latest: v" + normalizedLatestVersion);
-                } else if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " (v" + currentVersion + ")");
-                } else if (currentVersion.compareTo(normalizedLatestVersion) > 0) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running a newer version of " + pluginName + " (v" + currentVersion + ") but the latest is (v" + normalizedLatestVersion + ").");
-                } else {
-                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version v" + currentVersion +
-                            " but the latest is (v" + normalizedLatestVersion + ").");
+                if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " (v" + currentVersion + ").");
+                } else if (currentVersion.compareTo(normalizedLatestVersion) < 0) {
+                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» An update is required, installed version v" + currentVersion + ", but latest is v" + normalizedLatestVersion + ".");
                     Bukkit.getConsoleSender().sendMessage("§eUse /combat update to update to the latest version.");
+                } else {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running a newer version of " + pluginName + " (v" + currentVersion + ") but the latest is (v" + normalizedLatestVersion + ").");
                 }
             }, 20L * 3);
         }
