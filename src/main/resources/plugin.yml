@@ -3,11 +3,12 @@ main: net.opmasterleo.combat.Combat
 version: ${project.version}
 api-version: 1.21
 author: OPmasterLEO
+description: ${project.description}
 folia-supported: true
 softdepend:
   - WorldGuard
 commands:
   combat:
     description: Manage Combat plugin
-    usage: /combat [reload|toggle]
-    aliases: [combattoggle, combatreload]
+    usage: /combat [reload|toggle|update]
+    aliases: [combattoggle, combatreload, combatupdate]
