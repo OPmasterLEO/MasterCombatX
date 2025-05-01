@@ -1,4 +1,4 @@
-# Combat
+# MasterCombatX
 
 [![download](https://img.shields.io/github/downloads/VertrauterDavid/Combat/total?style=for-the-badge)](https://github.com/Kaleshnikk/Combat/releases)
 ![license](https://img.shields.io/github/license/Kaleshnikk/Combat?style=for-the-badge)
