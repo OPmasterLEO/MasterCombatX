@@ -5,20 +5,20 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.opmasterleo.combat</groupId>
-    <artifactId>ModernCombat</artifactId>
-    <version>3.8.1</version>
+    <artifactId>MasterCombatX</artifactId>
+    <version>4</version>
     <packaging>jar</packaging>
-    <description>A super combat plugin that have identical system like DonutSMP.</description>
+    <description>A super combat plugin that have identical system like DonutSMP and more.</description>
 
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <lombok.version>1.18.32</lombok.version>
+        <lombok.version>1.18.38</lombok.version>
         <worldguard.version>7.1.0-SNAPSHOT</worldguard.version>
     </properties>
 
     <build>
-        <finalName>${project.artifactId}-${project.version}</finalName>
+        <finalName>${project.artifactId}-v${project.version}</finalName>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
@@ -31,7 +31,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.14.0</version>
                 <configuration>
                     <annotationProcessorPaths>
                         <path>
@@ -133,6 +133,11 @@
             <artifactId>bstats-bukkit</artifactId>
             <version>3.0.2</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.zeroturnaround</groupId>
+            <artifactId>zt-zip</artifactId>
+            <version>1.14</version>
         </dependency>
     </dependencies>
 </project>

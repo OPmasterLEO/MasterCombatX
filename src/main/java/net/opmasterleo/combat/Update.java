@@ -14,7 +14,7 @@ import org.bukkit.plugin.Plugin;
 
 public class Update {
 
-    private static final String GITHUB_API_URL = "https://api.github.com/repos/Kaleshnikk/Combat/releases/latest";
+    private static final String GITHUB_API_URL = "https://api.github.com/repos/Kaleshnikk/MasterCombatX/releases/latest";
     private static String latestVersion;
     private static String downloadUrl;
     private static boolean updateConfirmationRequired = true;

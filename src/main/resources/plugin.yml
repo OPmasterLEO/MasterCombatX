@@ -9,6 +9,7 @@ depend:
   - WorldGuard
 commands:
   combat:
-    description: Manage Combat plugin
-    usage: /combat [reload|toggle|update]
-    aliases: [combattoggle, combatreload, combatupdate]
+    description: Main command for combat plugin.
+    usage: /combat <toggle|reload|update>
+    permission: combat.admin
+    permission-message: You do not have permission to use this command.

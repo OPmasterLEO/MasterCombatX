@@ -42,27 +42,24 @@ public class PlayerMoveListener implements Listener {
         Player player = event.getPlayer();
         Combat combat = Combat.getInstance();
 
-        if (!combat.isCombatEnabledInWorld(player) || !enderPearlEnabled || (ignoreOp && player.isOp()) ||
-            player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR || 
-            !combat.isInCombat(player)) {
+        // Skip checks if the player is not in combat or other conditions
+        if (!combat.isCombatEnabledInWorld(player) || !combat.isInCombat(player)) {
             return;
         }
 
         UUID playerId = player.getUniqueId();
         long currentTime = System.currentTimeMillis();
-        if (movementCooldown.containsKey(playerId) && currentTime - movementCooldown.get(playerId) < 200) {
+
+        // Check if the cooldown has expired
+        if (movementCooldown.containsKey(playerId) && currentTime - movementCooldown.get(playerId) < combat.getConfig().getLong("movement-cooldown", 200)) {
             return;
         }
+
+        // Update the last movement check time
         movementCooldown.put(playerId, currentTime);
 
-        if (isFolia) {
-            Bukkit.getGlobalRegionScheduler().execute(
-                Combat.getInstance(),
-                () -> restrictPlayerMovement(player)
-            );
-        } else {
-            restrictPlayerMovement(player);
-        }
+        // Perform movement-related checks (e.g., disabling Elytra or flight)
+        restrictPlayerMovement(player);
     }
 
     private void restrictPlayerMovement(Player player) {

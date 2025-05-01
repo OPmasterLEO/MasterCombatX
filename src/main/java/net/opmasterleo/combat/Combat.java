@@ -10,6 +10,7 @@ import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Entity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -20,12 +21,16 @@ import lombok.Getter;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.opmasterleo.combat.command.CombatCommand;
 import net.opmasterleo.combat.listener.CustomDeathMessageListener;
+import net.opmasterleo.combat.listener.EndCrystalListener;
 import net.opmasterleo.combat.listener.EntityDamageByEntityListener;
+import net.opmasterleo.combat.listener.EntityPlaceListener;
 import net.opmasterleo.combat.listener.PlayerCommandPreprocessListener;
 import net.opmasterleo.combat.listener.PlayerDeathListener;
 import net.opmasterleo.combat.listener.PlayerMoveListener;
 import net.opmasterleo.combat.listener.PlayerQuitListener;
 import net.opmasterleo.combat.listener.PlayerTeleportListener;
+import net.opmasterleo.combat.listener.SelfCombatListener;
+import net.opmasterleo.combat.manager.CrystalManager;
 
 @Getter
 public class Combat extends JavaPlugin implements Listener {
@@ -40,12 +45,13 @@ public class Combat extends JavaPlugin implements Listener {
     private boolean combatEnabled;
     private WorldGuardUtil worldGuardUtil;
     private PlayerMoveListener playerMoveListener;
+    private EndCrystalListener endCrystalListener;
+    private CrystalManager crystalManager;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         instance = this;
-        reloadCombatConfig();
 
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
             worldGuardUtil = new WorldGuardUtil();
@@ -58,8 +64,14 @@ public class Combat extends JavaPlugin implements Listener {
         Update.checkForUpdates(this);
         Update.notifyOnServerOnline(this);
 
-        int pluginId = 25562;
+        int pluginId = 25701;
         Metrics metrics = new Metrics(this, pluginId);
+
+        endCrystalListener = new EndCrystalListener();
+        Bukkit.getPluginManager().registerEvents(endCrystalListener, this);
+        Bukkit.getPluginManager().registerEvents(new EntityPlaceListener(), this);
+
+        crystalManager = new CrystalManager();
     }
 
     @Override
@@ -67,7 +79,7 @@ public class Combat extends JavaPlugin implements Listener {
         combatPlayers.clear();
         combatOpponents.clear();
         lastActionBarSeconds.clear();
-        Bukkit.getConsoleSender().sendMessage("§cModernCombat plugin has been disabled.");
+        Bukkit.getConsoleSender().sendMessage("§cMasterCombatX plugin has been disabled.");
     }
 
     private void detectFolia() {
@@ -88,6 +100,7 @@ public class Combat extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(new PlayerTeleportListener(), this);
         Bukkit.getPluginManager().registerEvents(new PlayerDeathListener(), this);
         Bukkit.getPluginManager().registerEvents(new CustomDeathMessageListener(), this);
+        Bukkit.getPluginManager().registerEvents(new SelfCombatListener(), this);
         Bukkit.getPluginManager().registerEvents(this, this);
     }
 
@@ -232,7 +245,11 @@ public class Combat extends JavaPlugin implements Listener {
     }
 
     public Player getCombatOpponent(Player player) {
-        return Bukkit.getPlayer(combatOpponents.get(player.getUniqueId()));
+        UUID opponentUUID = combatOpponents.get(player.getUniqueId());
+        if (opponentUUID == null) {
+            return null; // Return null if no opponent is found
+        }
+        return Bukkit.getPlayer(opponentUUID);
     }
 
     public void keepPlayerInCombat(Player player) {
@@ -298,5 +315,12 @@ public class Combat extends JavaPlugin implements Listener {
 
     public WorldGuardUtil getWorldGuardUtil() {
         return worldGuardUtil;
+    }
+
+    // Add a method to track crystal placements
+    public void registerCrystalPlacer(Entity crystal, Player placer) {
+        if (endCrystalListener != null) {
+            endCrystalListener.registerCrystalPlacer(crystal, placer);
+        }
     }
 }
