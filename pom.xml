@@ -134,10 +134,5 @@
             <version>3.0.2</version>
             <scope>compile</scope>
         </dependency>
-        <dependency>
-            <groupId>org.zeroturnaround</groupId>
-            <artifactId>zt-zip</artifactId>
-            <version>1.14</version>
-        </dependency>
     </dependencies>
 </project>
