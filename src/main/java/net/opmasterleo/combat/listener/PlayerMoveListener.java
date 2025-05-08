@@ -1,15 +1,15 @@
 package net.opmasterleo.combat.listener;
 
-import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
+import java.util.HashMap;
+import java.util.UUID;
+
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
-import net.opmasterleo.combat.Combat;
+import org.bukkit.event.player.PlayerToggleFlightEvent;
 
-import java.util.HashMap;
-import java.util.UUID;
+import net.opmasterleo.combat.Combat;
 
 public class PlayerMoveListener implements Listener {
 
@@ -42,7 +42,6 @@ public class PlayerMoveListener implements Listener {
         Player player = event.getPlayer();
         Combat combat = Combat.getInstance();
 
-        // Skip checks if the player is not in combat or other conditions
         if (!combat.isCombatEnabledInWorld(player) || !combat.isInCombat(player)) {
             return;
         }
@@ -50,15 +49,12 @@ public class PlayerMoveListener implements Listener {
         UUID playerId = player.getUniqueId();
         long currentTime = System.currentTimeMillis();
 
-        // Check if the cooldown has expired
         if (movementCooldown.containsKey(playerId) && currentTime - movementCooldown.get(playerId) < combat.getConfig().getLong("movement-cooldown", 200)) {
             return;
         }
 
-        // Update the last movement check time
         movementCooldown.put(playerId, currentTime);
 
-        // Perform movement-related checks (e.g., disabling Elytra or flight)
         restrictPlayerMovement(player);
     }
 
@@ -66,5 +62,13 @@ public class PlayerMoveListener implements Listener {
         if (player.isGliding()) player.setGliding(false);
         if (player.isFlying()) player.setFlying(false);
         if (player.getAllowFlight()) player.setAllowFlight(false);
+    }
+
+    @EventHandler
+    public void onElytraToggle(PlayerToggleFlightEvent event) {
+        if (event.isFlying() && event.getPlayer().isGliding()) {
+            event.setCancelled(true);
+            event.getPlayer().sendMessage("§cElytra usage is disabled while in combat.");
+        }
     }
 }

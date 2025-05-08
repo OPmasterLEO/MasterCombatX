@@ -1,7 +1,7 @@
 package net.opmasterleo.combat.command;
 
 import net.opmasterleo.combat.Combat;
-import net.opmasterleo.combat.Update; // Add this import
+import net.opmasterleo.combat.Update;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

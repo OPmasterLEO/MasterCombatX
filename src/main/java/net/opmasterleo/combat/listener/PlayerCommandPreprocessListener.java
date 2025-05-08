@@ -1,13 +1,14 @@
 package net.opmasterleo.combat.listener;
 
-import net.opmasterleo.combat.Combat;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 
-import java.util.ArrayList;
-import java.util.List;
+import net.opmasterleo.combat.Combat;
 
 public class PlayerCommandPreprocessListener implements Listener {
 
@@ -26,5 +27,4 @@ public class PlayerCommandPreprocessListener implements Listener {
             }
         }
     }
-
 }

@@ -177,7 +177,6 @@ public class Update {
                 return;
             }
 
-            // Ensure the latestVersion does not include the plugin name redundantly
             String normalizedVersion = latestVersion.replace(pluginName + "-", "").replace(pluginName, "");
             File tempFile = new File(updateFolder, pluginName + "-" + normalizedVersion + ".jar");
 
@@ -208,15 +207,18 @@ public class Update {
 
     public static boolean isFolia() {
         try {
-            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+            Class.forName("io.papermc.paper.threadedregions.RegionizedServer", false, Update.class.getClassLoader());
             return true;
         } catch (ClassNotFoundException e) {
+            return false;
+        } catch (IllegalStateException e) {
+            Bukkit.getConsoleSender().sendMessage("§c[MasterCombatX] Error checking for Folia: " + e.getMessage());
             return false;
         }
     }
 
     private static String normalizeVersion(String version) {
-        return version.replaceAll("[^0-9.]", ""); // Remove non-numeric characters
+        return version.replaceAll("[^0-9.]", "");
     }
 
     private static String parseVersion(String jsonResponse) {
@@ -245,12 +247,12 @@ public class Update {
             int latestPart = i < latestParts.length ? Integer.parseInt(latestParts[i]) : 0;
 
             if (currentPart < latestPart) {
-                return true; // Latest version is newer
+                return true;
             } else if (currentPart > latestPart) {
-                return false; // Current version is newer
+                return false;
             }
         }
 
-        return false; // Versions are equal
+        return false;
     }
 }

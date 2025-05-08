@@ -9,12 +9,19 @@ import java.util.UUID;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
-import org.bukkit.entity.Player;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.events.ListenerPriority;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketEvent;
 
 import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler;
 import lombok.Getter;
@@ -47,14 +54,25 @@ public class Combat extends JavaPlugin implements Listener {
     private PlayerMoveListener playerMoveListener;
     private EndCrystalListener endCrystalListener;
     private CrystalManager crystalManager;
+    private ProtocolManager protocolManager;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         instance = this;
 
+        combatEnabled = getConfig().getBoolean("combat-enabled", true);
+
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
             worldGuardUtil = new WorldGuardUtil();
+        }
+
+        if (Bukkit.getPluginManager().getPlugin("ProtocolLib") != null) {
+            protocolManager = ProtocolLibrary.getProtocolManager();
+            setupPacketListeners();
+            Bukkit.getConsoleSender().sendMessage("§a[MasterCombatX] ProtocolLib detected and integrated.");
+        } else {
+            Bukkit.getConsoleSender().sendMessage("§c[MasterCombatX] ProtocolLib not detected. Some features may not work.");
         }
 
         registerListeners();
@@ -247,7 +265,7 @@ public class Combat extends JavaPlugin implements Listener {
     public Player getCombatOpponent(Player player) {
         UUID opponentUUID = combatOpponents.get(player.getUniqueId());
         if (opponentUUID == null) {
-            return null; // Return null if no opponent is found
+            return null;
         }
         return Bukkit.getPlayer(opponentUUID);
     }
@@ -268,12 +286,12 @@ public class Combat extends JavaPlugin implements Listener {
 
     public void reloadCombatConfig() {
         reloadConfig();
+        combatEnabled = getConfig().getBoolean("combat-enabled", true);
         enableWorldsEnabled = getConfig().getBoolean("EnabledWorlds.enabled", false);
         enabledWorlds = getConfig().getStringList("EnabledWorlds.worlds");
         if (enabledWorlds == null || enabledWorlds.isEmpty()) {
             enabledWorlds = List.of("world");
         }
-        combatEnabled = getConfig().getBoolean("Enabled", true);
         if (playerMoveListener != null) playerMoveListener.reloadConfig();
     }
 
@@ -317,10 +335,20 @@ public class Combat extends JavaPlugin implements Listener {
         return worldGuardUtil;
     }
 
-    // Add a method to track crystal placements
     public void registerCrystalPlacer(Entity crystal, Player placer) {
-        if (endCrystalListener != null) {
-            endCrystalListener.registerCrystalPlacer(crystal, placer);
+        if (crystalManager != null) {
+            crystalManager.setPlacer(crystal, placer);
         }
+    }
+
+    private void setupPacketListeners() {
+        protocolManager.addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.NAMED_SOUND_EFFECT) {
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                if (event.getPacketType() == PacketType.Play.Server.NAMED_SOUND_EFFECT) {
+                    event.setCancelled(true);
+                }
+            }
+        });
     }
 }

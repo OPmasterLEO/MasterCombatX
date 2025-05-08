@@ -104,7 +104,6 @@ link-tnt: true
 # MasterCombat can link end crystals to their placer.
 # This will only link the attacker, not the entity that was attacked.
 # Default: true
-# EXPERIMENTAL: This feature currently does not work as expected.
 link-end-crystals: true
 
 # Should MasterCombat tag players when they shoot themselves with a projectile?

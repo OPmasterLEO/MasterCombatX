@@ -1,12 +1,19 @@
 package net.opmasterleo.combat.listener;
 
-import net.opmasterleo.combat.Combat;
-import org.bukkit.entity.*;
+import java.util.List;
+
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.FishHook;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
+import org.bukkit.entity.TNTPrimed;
+import org.bukkit.entity.Tameable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
-import java.util.List;
+import net.opmasterleo.combat.Combat;
 
 public class EntityDamageByEntityListener implements Listener {
 
@@ -18,22 +25,19 @@ public class EntityDamageByEntityListener implements Listener {
 
         Entity damager = event.getDamager();
 
-        // Handle direct player attacks
         if (damager instanceof Player damagerP) {
             if (damagerP.getUniqueId().equals(player.getUniqueId())) return;
             Combat.getInstance().setCombat(player, damagerP);
             Combat.getInstance().setCombat(damagerP, player);
         }
 
-        // Handle projectile attacks
         if (damager instanceof Projectile projectile) {
             if (!Combat.getInstance().getConfig().getBoolean("link-projectiles", true)) {
-                return; // Do not set combat if link-projectiles is false
+                return;
             }
 
             if (projectile.getShooter() instanceof Player shooter) {
                 if (shooter.getUniqueId().equals(player.getUniqueId())) {
-                    // Check if self-combat is enabled
                     if (Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
                         Combat.getInstance().setCombat(player, player);
                     }
@@ -47,7 +51,6 @@ public class EntityDamageByEntityListener implements Listener {
             }
         }
 
-        // Handle end crystal damage
         if (Combat.getInstance().getConfig().getBoolean("link-end-crystals", true) && damager.getType() == EntityType.END_CRYSTAL) {
             Player placer = Combat.getInstance().getCrystalManager().getPlacer(damager);
             if (placer != null) {
@@ -56,7 +59,6 @@ public class EntityDamageByEntityListener implements Listener {
             }
         }
 
-        // Handle pet attacks
         if (Combat.getInstance().getConfig().getBoolean("link-pets", true) && damager instanceof Tameable tameable) {
             if (tameable.getOwner() instanceof Player owner) {
                 if (owner.getUniqueId().equals(player.getUniqueId())) return;
@@ -65,7 +67,6 @@ public class EntityDamageByEntityListener implements Listener {
             }
         }
 
-        // Handle fishing rod attacks
         if (Combat.getInstance().getConfig().getBoolean("link-fishing-rod", true) && damager instanceof FishHook fishHook) {
             if (fishHook.getShooter() instanceof Player shooter) {
                 if (shooter.getUniqueId().equals(player.getUniqueId())) return;
@@ -74,7 +75,6 @@ public class EntityDamageByEntityListener implements Listener {
             }
         }
 
-        // Handle TNT explosions
         if (Combat.getInstance().getConfig().getBoolean("link-tnt", true) && damager instanceof TNTPrimed tnt) {
             if (tnt.getSource() instanceof Player source) {
                 if (source.getUniqueId().equals(player.getUniqueId())) return;
