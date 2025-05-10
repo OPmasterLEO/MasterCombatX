@@ -1,17 +1,50 @@
 name: ${project.name}
-main: net.opmasterleo.combat.Combat
+main: net.opmasterleo.mastersmpcore.main
 version: ${project.version}
-api-version: 1.21
-author: OPmasterLEO
 description: ${project.description}
+author: ${project.author}
 folia-supported: true
-depend:
-  - WorldGuard
-softdepend:
-  - ProtocolLib
+api-version: 1.21
+depend: [WorldGuard]
+softdepend: [LuckPerms]
+
 commands:
-  combat:
-    description: Main command for combat plugin.
-    usage: /combat <toggle|reload|update>
-    permission: combat.admin
-    permission-message: You do not have permission to use this command.
+  findplayer:
+    description: Find the world of a specified player.
+    usage: /findplayer <player>
+  ping:
+    description: Check your ping or another player's ping.
+    usage: /ping [player]
+  mastercorereload:
+    description: Reload the plugin configuration.
+    usage: /mastercorereload
+  subscription:
+    description: Manage player subscriptions.
+    usage: /subscription add <user> <luckperms_rank> <duration>
+  fly:
+    description: Toggle flight mode.
+    usage: /fly
+  silentgive:
+    description: Silently give an item to a player.
+    usage: /silentgive <player> <item> <amount>
+    permission: mastersmp.silentgive
+
+permissions:
+  mastersmp.findplayer:
+    description: Allows the use of the /findplayer command.
+    default: true
+  mastersmp.ping:
+    description: Allows the use of the /ping command.
+    default: true
+  mastersmp.mastercorereload:
+    description: Allows the use of the /mastercorereload command.
+    default: op
+  mastersmp.fly.use:
+    description: Allows the use of the fly feature in specific worlds.
+    default: false
+  mastersmp.fly.command:
+    description: Allows the use of the /fly command.
+    default: op
+  mastersmp.silentgive:
+    description: Allows the use of the /silentgive command.
+    default: op

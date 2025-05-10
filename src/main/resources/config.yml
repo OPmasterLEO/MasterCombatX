@@ -1,129 +1,52 @@
-# ---------------------------------------------------------------------------
-#
-#         Developed by OPmasterLEO
-#
-#         https://github.com/Kaleshnikk
-#         https://builtbybit.com/resources/moderncombat.65133/
-#
-# ---------------------------------------------------------------------------
+# Default configuration for MasterSMP Core plugin
+default_color: "&#37BFF9"
 
-# Version of the plugin that generated this configuration
-generated-by-version: "v${project.version}" # DO NOT CHANGE
- 
-# Notify opped players about updates when they join the server
-update-notify-chat: false
+FindPlayerWorlds:
+  - "spawn:&#37BFF9:ꜱᴘᴀᴡɴ"
+  - "afk:&#A303F9:ᴀꜰᴋ"
+  - "world:&#37BFF9:ᴏᴠᴇʀᴡᴏʀʟᴅ"
+  - "world_nether:&#37BFF9:ɴᴇᴛʜᴇʀ"
+  - "world_the_end:&#37BFF9:ᴇɴᴅ"
 
-# Duration of the combat timer in seconds
-Duration: 15
+messages:
+  player_not_found: "&cThis user is offline or does not exist."
+  never_played: "&cThis user has never played before."
 
-# Enable combat globally
-combat-enabled: true
+ping:
+  enabled: true
+  self_message: "&#A8A8A8Your ping is &#37BEF8%ping%ms"
+  target_message: "&#A8A8A8%player%'s ping is &#37BEF8%ping%ms"
+  error_message: "&cThis user is offline or does not exist."
+  error_sound: "ENTITY_VILLAGER_NO"
 
-# Enable combat only in specific worlds | HIGHLY EXPERIMENTAL
-# This feature is not fully tested and may cause issues.
-# Use at your own risk!
-# If you want to enable this feature, set 'enabled' to true and specify the worlds.
-EnabledWorlds:
-  enabled: false
-  worlds:
-    - world1
-    - world2
+first_join:
+  enabled: true
+  join_message: "&#37bff9%player% &#C7CEDCjoined the server for the first time."
+  messages:
+    - "&#37bff9ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ᴍᴀꜱᴛᴇʀꜱᴍᴘ!"
+    - "&#37bff9ᴊᴏɪɴ ᴛʜᴇ ᴍᴀꜱᴛᴇʀꜱᴍᴘ ᴅɪꜱᴄᴏʀᴅ ᴄᴏᴍᴍᴜɴɪᴛʏ!"
+    - "&#37bff9● <open url:http://discord.gg/GXRFA8fx59>&#37bff9&ndsc.gg/mastersmc</open>"
+  items:
+    - "STONE_SWORD:1"
+    - "COOKED_BEEF:16"
+    - "CHAINMAIL_HELMET:1"
+    - "CHAINMAIL_CHESTPLATE:1"
+    - "CHAINMAIL_LEGGINGS:1"
+    - "CHAINMAIL_BOOTS:1"
 
-Messages:
-  Prefix: '' # Prefix for all messages
-  NowInCombat: '' # empty = disabled
-  NoLongerInCombat: '' # empty = disabled
-  LogoutInCombat: '' # empty = disabled
+join_message: "&#37bff9%player% &#C7CEDCjoined the server."
+quit_message: "&#37bff9%player% &#C7CEDCleft the server."
 
-# Enable custom death messages
-# This feature does not modify vanilla death messages.
-# It only adds a prefix to the death message.
-CustomDeathMessage:
-  enabled: false
-  prefix: '&c☠ '  
-
-# Disable Combat for all with OP permissions
-ignore-op: false
-
-# Disable Elytra in combat
-disable-elytra: false
-
-# Settings for the action bar message during combat
-ActionBar:
-  Enabled: true # Enables the action bar message
-  Format: '&#C7CEDCCombat: &#37bff9%seconds%s'
-
-Commands:
-  Blocked: # List of commands that are blocked during combat
+Fly:
+  permission: mastersmp.fly.use
+  FlyWorlds:
     - spawn
-    - tpa
-    - tpahere
-    - home
-    - homes
-    - rtp
-    - afk 
-    - warp
-    - warps
-  Format: '&7You cannot use &c%command% &7while in combat!'
+    - afk
+  restricted_message: "&cYou are not allowed to do that in this region."
 
-EnderPearl:
-  Enabled: false # Enables restrictions on ender pearl usage during combat
-  Distance: 25 # Maximum allowed teleport distance with ender pearls
-  Format: 'You cannot teleport that far away in combat!'
-
-# MasterCombat can link pets, such as wolves, cats, and other animals that can be tamed, to their owner.
-# This will only link the attacker, not the entity that was attacked.
-# Default: true
-link-pets: true
-
-# MasterCombat can link projectiles, such as arrows from skeletons, to their shooter.
-# This will only link the attacker, not the entity that was attacked.
-# Default: true
-link-projectiles: true
-
-# Which projectiles will be ignored when the 'link-projectiles' option is enabled?
-# If 'link-projectiles' is false, all projectiles will be ignored.
-# You can find a list of valid projectile types on the Spigot javadocs:
-# https://hub.spigotmc.org/javadocs/spigot/org/bukkit/entity/EntityType.html
-ignored-projectiles:
-  - EGG
-  - ENDER_PEARL
-  - SNOWBALL
-
-# MasterCombat can link a fishing rod to the entity that cast it.
-# This will only link the attacker, not the entity that was attacked.
-# Default: true
-# EXPERIMENTAL: This feature currently does not work as expected.
-link-fishing-rod: true
-
-# MasterCombat can sometimes link TNT to the entity that caused it to explode.
-# This will only link the attacker, not the entity that was attacked.
-# Default: true
-link-tnt: true
-
-# MasterCombat can link end crystals to their placer.
-# This will only link the attacker, not the entity that was attacked.
-# Default: true
-link-end-crystals: true
-
-# Should MasterCombat tag players when they shoot themselves with a projectile?
-# Default: false
-self-combat: false
-
-# Should MasterCombat remove players from combat when they are killed?
-# Default: true
-untag-on-death: true
-
-# Should MasterCombat remove players from combat when their enemy is killed?
-# This also removed combat if the enemy is a creeper and decides to explode.
-# Default: true
-untag-on-enemy-death: true
-
-# Cooldown for movement checks in milliseconds
-movement-cooldown: 200
-
-# Timeout for update confirmation in milliseconds
-update-confirmation-timeout: 10000
-
-# Interval for update checks in minutes
-update-check-interval: 60
+subscription:
+  online_message: "&#a8a8a8You received &#00a4fc%rank% &#a8a8a8Rank!\n\n&#a8a8a8You have &#00a4fc%time% &#a8a8a8left of subscription time."
+  offline_message: "&#a8a8a8You received &#00a4fc%rank% &#a8a8a8Rank!\n\n&#a8a8a8You have &#00a4fc%time% &#a8a8a8left of subscription time."
+  expired_message: "&#a8a8a8Your &#00a4fc%rank% &#a8a8a8subscription has expired!"
+  thank_you_message: "&#a8a8a8Thank you for being a part of &#00a4fcMasterSMP!"
+  revoked_message: "&#a8a8a8Your &#00a4fc%rank% &#a8a8a8subscription has been revoked by an admin!"
