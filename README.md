@@ -1,6 +1,6 @@
 # MasterCombatX
 
-[![download](https://img.shields.io/github/downloads/VertrauterDavid/Combat/total?style=for-the-badge)](https://github.com/Kaleshnikk/Combat/releases)
+[![download](https://img.shields.io/github/downloads/Kaleshnikk/Combat/total?style=for-the-badge)](https://github.com/Kaleshnikk/Combat/releases)
 ![license](https://img.shields.io/github/license/Kaleshnikk/Combat?style=for-the-badge)
 ![stars](https://img.shields.io/github/stars/Kaleshnikk/Combat?style=for-the-badge)
 ![forks](https://img.shields.io/github/forks/VertrauterDavid/Combat?style=for-the-badge)
