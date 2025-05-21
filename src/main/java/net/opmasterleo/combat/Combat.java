@@ -9,8 +9,8 @@ import java.util.UUID;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Entity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -51,6 +51,8 @@ public class Combat extends JavaPlugin implements Listener {
     private boolean enableWorldsEnabled;
     private List<String> enabledWorlds;
     private boolean combatEnabled;
+    private boolean glowingEnabled;
+    private boolean antiCheatIntegration;
     private WorldGuardUtil worldGuardUtil;
     private PlayerMoveListener playerMoveListener;
     private EndCrystalListener endCrystalListener;
@@ -63,6 +65,8 @@ public class Combat extends JavaPlugin implements Listener {
         instance = this;
 
         combatEnabled = getConfig().getBoolean("combat-enabled", true);
+        glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
+        antiCheatIntegration = getConfig().getBoolean("AntiCheatIntegration", true);
 
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
             worldGuardUtil = new WorldGuardUtil();
@@ -102,6 +106,12 @@ public class Combat extends JavaPlugin implements Listener {
         combatPlayers.clear();
         combatOpponents.clear();
         lastActionBarSeconds.clear();
+        if (glowingEnabled) {
+            for (UUID uuid : combatPlayers.keySet()) {
+                Player player = Bukkit.getPlayer(uuid);
+                if (player != null) player.setGlowing(false);
+            }
+        }
         Bukkit.getConsoleSender().sendMessage("§cMasterCombatX plugin has been disabled.");
     }
 
@@ -165,14 +175,17 @@ public class Combat extends JavaPlugin implements Listener {
                         iterator.remove();
                         combatOpponents.remove(uuid);
                         lastActionBarSeconds.remove(uuid);
+                        if (glowingEnabled) setPlayerGlowing(uuid, false);
                         continue;
                     }
 
                     if (currentTime >= entry.getValue()) {
                         handleCombatEnd(player, iterator);
                         lastActionBarSeconds.remove(uuid);
+                        if (glowingEnabled) setPlayerGlowing(uuid, false);
                     } else {
                         updateActionBar(player, entry.getValue(), currentTime);
+                        if (glowingEnabled) setPlayerGlowing(uuid, true);
                     }
                 }
             }, 20L, 20L);
@@ -190,17 +203,29 @@ public class Combat extends JavaPlugin implements Listener {
                         iterator.remove();
                         combatOpponents.remove(uuid);
                         lastActionBarSeconds.remove(uuid);
+                        if (glowingEnabled) setPlayerGlowing(uuid, false);
                         continue;
                     }
 
                     if (currentTime >= entry.getValue()) {
                         handleCombatEnd(player, iterator);
                         lastActionBarSeconds.remove(uuid);
+                        if (glowingEnabled) setPlayerGlowing(uuid, false);
                     } else {
                         updateActionBar(player, entry.getValue(), currentTime);
+                        if (glowingEnabled) setPlayerGlowing(uuid, true);
                     }
                 }
             }, 20, 20);
+        }
+    }
+
+    private void setPlayerGlowing(UUID uuid, boolean glowing) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null && player.isOnline()) {
+            if (player.isGlowing() != glowing) {
+                player.setGlowing(glowing);
+            }
         }
     }
 
@@ -265,6 +290,14 @@ public class Combat extends JavaPlugin implements Listener {
         player.setGliding(false);
         player.setFlying(false);
         player.setAllowFlight(false);
+        // Anti-Cheat Integration: Remove speed/fly potion effects if enabled
+        if (antiCheatIntegration) {
+            player.setWalkSpeed(0.2f); // reset to default
+            player.setFlySpeed(0.1f);  // reset to default
+            player.getActivePotionEffects().stream()
+                .filter(effect -> effect.getType().getName().equalsIgnoreCase("SPEED") || effect.getType().getName().equalsIgnoreCase("LEVITATION"))
+                .forEach(effect -> player.removePotionEffect(effect.getType()));
+        }
     }
 
     public Player getCombatOpponent(Player player) {
@@ -298,6 +331,8 @@ public class Combat extends JavaPlugin implements Listener {
             enabledWorlds = List.of("world");
         }
         if (playerMoveListener != null) playerMoveListener.reloadConfig();
+        glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
+        antiCheatIntegration = getConfig().getBoolean("AntiCheatIntegration", true);
     }
 
     public void setCombatEnabled(boolean enabled) {

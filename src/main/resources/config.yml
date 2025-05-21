@@ -53,6 +53,10 @@ ActionBar:
   Enabled: true # Enables the action bar message
   Format: '&#C7CEDCCombat: &#37bff9%seconds%s'
 
+# Combat Tag Glowing visual indicator
+CombatTagGlowing:
+  Enabled: true
+
 Commands:
   Blocked: # List of commands that are blocked during combat
     - spawn
@@ -126,4 +130,7 @@ movement-cooldown: 200
 update-confirmation-timeout: 10000
 
 # Interval for update checks in minutes
-update-check-interval: 60
+update-check-interval: 120
+
+# Anti-Cheat Integration: disables speed/fly effects while in combat
+AntiCheatIntegration: true
