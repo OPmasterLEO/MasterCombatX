@@ -387,10 +387,8 @@ public class Combat extends JavaPlugin implements Listener {
         boolean isFolia = Update.isFolia();
 
         try {
-            Package serverPackage = Bukkit.getServer().getClass().getPackage();
-            String[] packageParts = serverPackage.getName().split("\\.");
-            // Example: org.bukkit.craftbukkit.leafmc_1_20_R1
-            serverJarName = packageParts.length > 3 ? packageParts[3] : "Unknown";
+            String serverName = Bukkit.getServer().getName(); // This is usually "Paper", "Purpur", "Leaf", etc.
+            serverJarName = serverName;
             if (isFolia) {
                 apiType = "folia";
             } else {
