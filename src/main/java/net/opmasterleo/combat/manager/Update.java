@@ -25,6 +25,7 @@ public class Update {
     }
 
     public static void checkForUpdates(Plugin plugin) {
+        Bukkit.getConsoleSender().sendMessage("Checking for updates…");
         if (isFolia()) {
             Bukkit.getGlobalRegionScheduler().execute(plugin, () -> performUpdateCheck(plugin));
         } else {
@@ -132,6 +133,7 @@ public class Update {
             return;
         }
 
+        Bukkit.getConsoleSender().sendMessage("Downloading and applying the update ...");
         if (isFolia()) {
             Bukkit.getGlobalRegionScheduler().execute(plugin, () -> performJarReplacement(plugin));
         } else {
@@ -159,6 +161,13 @@ public class Update {
 
                 latestVersion = parseVersion(response.toString());
                 downloadUrl = parseDownloadUrl(response.toString());
+
+                String currentVersion = normalizeVersion(plugin.getDescription().getVersion());
+                String normalizedLatestVersion = latestVersion != null ? normalizeVersion(latestVersion) : null;
+
+                if (latestVersion != null && !currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
+                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Update found!");
+                }
             } else {
                 Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to check for updates. HTTP Response Code: " + connection.getResponseCode());
             }
@@ -170,8 +179,8 @@ public class Update {
     private static void performJarReplacement(Plugin plugin) {
         String pluginName = plugin.getDescription().getName();
         try {
-            File pluginFile = new File(plugin.getClass().getProtectionDomain().getCodeSource().getLocation().toURI());
-            File updateFolder = new File(pluginFile.getParentFile().getParentFile(), "update");
+            // Place update in plugins/update/ (standard for Bukkit/Paper)
+            File updateFolder = new File(plugin.getDataFolder().getParentFile(), "update");
             if (!updateFolder.exists() && !updateFolder.mkdirs()) {
                 Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to create update folder.");
                 return;
@@ -194,11 +203,11 @@ public class Update {
                 }
             }
 
-            if (tempFile.exists()) {
-                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Download complete. The new version has been placed in the update folder.");
+            if (tempFile.exists() && tempFile.length() > 0) {
+                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Update complete. The new version has been placed in the update folder.");
                 Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Please restart your server to apply the update.");
             } else {
-                Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to download the latest jar. File does not exist.");
+                Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to download the latest jar. File does not exist or is empty.");
             }
         } catch (Exception e) {
             Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» An error occurred while downloading the jar: " + e.getMessage());
