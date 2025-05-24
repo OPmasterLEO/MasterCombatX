@@ -1,16 +1,18 @@
 package net.opmasterleo.combat;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
-import org.bukkit.entity.Player;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -22,6 +24,9 @@ import com.comphenix.protocol.ProtocolManager;
 import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler;
 import lombok.Getter;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.opmasterleo.combat.api.MasterCombatAPIBackend;
+import net.opmasterleo.combat.api.MasterCombatAPIProvider;
+import net.opmasterleo.combat.api.events.MasterCombatLoadEvent;
 import net.opmasterleo.combat.command.CombatCommand;
 import net.opmasterleo.combat.listener.CustomDeathMessageListener;
 import net.opmasterleo.combat.listener.EndCrystalListener;
@@ -34,11 +39,8 @@ import net.opmasterleo.combat.listener.PlayerQuitListener;
 import net.opmasterleo.combat.listener.PlayerTeleportListener;
 import net.opmasterleo.combat.listener.SelfCombatListener;
 import net.opmasterleo.combat.manager.CrystalManager;
-import net.opmasterleo.combat.manager.WorldGuardUtil;
 import net.opmasterleo.combat.manager.Update;
-import net.opmasterleo.combat.api.MasterCombatAPIBackend;
-import net.opmasterleo.combat.api.MasterCombatAPIProvider;
-import net.opmasterleo.combat.api.events.MasterCombatLoadEvent;
+import net.opmasterleo.combat.manager.WorldGuardUtil;
 
 @Getter
 public class Combat extends JavaPlugin implements Listener {
@@ -58,6 +60,12 @@ public class Combat extends JavaPlugin implements Listener {
     private EndCrystalListener endCrystalListener;
     private CrystalManager crystalManager;
     private ProtocolManager protocolManager;
+
+    private boolean disableElytra;
+    private boolean enderPearlEnabled;
+    private long enderPearlDistance;
+    private String elytraDisabledMsg;
+    private Set<String> ignoredProjectiles = new HashSet<>();
 
     @Override
     public void onEnable() {
@@ -175,6 +183,7 @@ public class Combat extends JavaPlugin implements Listener {
                         iterator.remove();
                         combatOpponents.remove(uuid);
                         lastActionBarSeconds.remove(uuid);
+                        // Only remove glowing if it was previously enabled
                         if (glowingEnabled) setPlayerGlowing(uuid, false);
                         continue;
                     }
@@ -185,7 +194,9 @@ public class Combat extends JavaPlugin implements Listener {
                         if (glowingEnabled) setPlayerGlowing(uuid, false);
                     } else {
                         updateActionBar(player, entry.getValue(), currentTime);
+                        // Only apply glowing if enabled in config
                         if (glowingEnabled) setPlayerGlowing(uuid, true);
+                        // Do NOT call setPlayerGlowing(uuid, false) here if disabled
                     }
                 }
             }, 20L, 20L);
@@ -214,6 +225,7 @@ public class Combat extends JavaPlugin implements Listener {
                     } else {
                         updateActionBar(player, entry.getValue(), currentTime);
                         if (glowingEnabled) setPlayerGlowing(uuid, true);
+                        // Do NOT call setPlayerGlowing(uuid, false) here if disabled
                     }
                 }
             }, 20, 20);
@@ -330,10 +342,36 @@ public class Combat extends JavaPlugin implements Listener {
         if (enabledWorlds == null || enabledWorlds.isEmpty()) {
             enabledWorlds = List.of("world");
         }
-        if (playerMoveListener != null) playerMoveListener.reloadConfig();
         glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
         antiCheatIntegration = getConfig().getBoolean("AntiCheatIntegration", true);
+
+        // Cache config values for performance
+        disableElytra = getConfig().getBoolean("disable-elytra", false);
+        enderPearlEnabled = getConfig().getBoolean("EnderPearl.Enabled", false);
+        enderPearlDistance = getConfig().getLong("EnderPearl.Distance", 0);
+        elytraDisabledMsg = getMessage("Messages.ElytraDisabled");
+        if (elytraDisabledMsg == null || elytraDisabledMsg.isEmpty()) {
+            elytraDisabledMsg = "§cElytra usage is disabled while in combat.";
+        }
+        // Cache ignored projectiles set
+        ignoredProjectiles.clear();
+        List<String> ignoredList = getConfig().getStringList("ignored-projectiles");
+        for (String s : ignoredList) ignoredProjectiles.add(s.toUpperCase());
+
+        // Remove glowing from all players if disabled in config
+        if (!glowingEnabled) {
+            for (UUID uuid : combatPlayers.keySet()) {
+                setPlayerGlowing(uuid, false);
+            }
+        }
     }
+
+    // Add getters for cached config values for use in listeners
+    public boolean isDisableElytra() { return disableElytra; }
+    public boolean isEnderPearlEnabled() { return enderPearlEnabled; }
+    public long getEnderPearlDistance() { return enderPearlDistance; }
+    public String getElytraDisabledMsg() { return elytraDisabledMsg; }
+    public Set<String> getIgnoredProjectiles() { return ignoredProjectiles; }
 
     public void setCombatEnabled(boolean enabled) {
         this.combatEnabled = enabled;

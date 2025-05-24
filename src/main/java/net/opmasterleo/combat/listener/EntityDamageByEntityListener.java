@@ -1,6 +1,6 @@
 package net.opmasterleo.combat.listener;
 
-import java.util.List;
+import java.util.Set;
 
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -15,71 +15,72 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
 import net.opmasterleo.combat.Combat;
 
-public class EntityDamageByEntityListener implements Listener {
+public final class EntityDamageByEntityListener implements Listener {
 
     @EventHandler
     public void handle(EntityDamageByEntityEvent event) {
         if (event.isCancelled()) return;
         if (!(event.getEntity() instanceof Player player)) return;
-        if (Combat.getInstance().getWorldGuardUtil() != null && Combat.getInstance().getWorldGuardUtil().isPvpDenied(player)) return;
+        Combat combat = Combat.getInstance();
+        if (combat.getWorldGuardUtil() != null && combat.getWorldGuardUtil().isPvpDenied(player)) return;
 
         Entity damager = event.getDamager();
 
         if (damager instanceof Player damagerP) {
             if (damagerP.getUniqueId().equals(player.getUniqueId())) return;
-            Combat.getInstance().setCombat(player, damagerP);
-            Combat.getInstance().setCombat(damagerP, player);
+            combat.setCombat(player, damagerP);
+            combat.setCombat(damagerP, player);
         }
 
         if (damager instanceof Projectile projectile) {
-            if (!Combat.getInstance().getConfig().getBoolean("link-projectiles", true)) {
-                return;
-            }
+            boolean linkProjectiles = combat.getConfig().getBoolean("link-projectiles", true);
+            boolean selfCombat = combat.getConfig().getBoolean("self-combat", false);
+            if (!linkProjectiles) return;
 
             if (projectile.getShooter() instanceof Player shooter) {
                 if (shooter.getUniqueId().equals(player.getUniqueId())) {
-                    if (Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
-                        Combat.getInstance().setCombat(player, player);
+                    if (selfCombat) {
+                        combat.setCombat(player, player);
                     }
                 } else {
-                    List<String> ignoredProjectiles = Combat.getInstance().getConfig().getStringList("ignored-projectiles");
-                    if (ignoredProjectiles.contains(projectile.getType().name())) return;
+                    Set<String> ignoredProjectiles = combat.getIgnoredProjectiles();
+                    if (ignoredProjectiles.contains(projectile.getType().name().toUpperCase())) return;
 
-                    Combat.getInstance().setCombat(player, shooter);
-                    Combat.getInstance().setCombat(shooter, player);
+                    combat.setCombat(player, shooter);
+                    combat.setCombat(shooter, player);
                 }
             }
         }
 
-        if (Combat.getInstance().getConfig().getBoolean("link-end-crystals", true) && damager.getType() == EntityType.END_CRYSTAL) {
-            Player placer = Combat.getInstance().getCrystalManager().getPlacer(damager);
+        if (combat.getConfig().getBoolean("link-end-crystals", true) && damager.getType() == EntityType.END_CRYSTAL) {
+            Player placer = combat.getCrystalManager().getPlacer(damager);
             if (placer != null) {
-                Combat.getInstance().setCombat(player, placer);
-                Combat.getInstance().setCombat(placer, player);
+                combat.setCombat(player, placer);
+                combat.setCombat(placer, player);
             }
         }
 
-        if (Combat.getInstance().getConfig().getBoolean("link-pets", true) && damager instanceof Tameable tameable) {
+        if (combat.getConfig().getBoolean("link-pets", true) && damager instanceof Tameable tameable) {
             if (tameable.getOwner() instanceof Player owner) {
                 if (owner.getUniqueId().equals(player.getUniqueId())) return;
-                Combat.getInstance().setCombat(player, owner);
-                Combat.getInstance().setCombat(owner, player);
+                combat.setCombat(player, owner);
+                combat.setCombat(owner, player);
             }
         }
 
-        if (Combat.getInstance().getConfig().getBoolean("link-fishing-rod", true) && damager instanceof FishHook fishHook) {
+        if (combat.getConfig().getBoolean("link-fishing-rod", true) && damager instanceof FishHook fishHook) {
             if (fishHook.getShooter() instanceof Player shooter) {
                 if (shooter.getUniqueId().equals(player.getUniqueId())) return;
-                Combat.getInstance().setCombat(player, shooter);
-                Combat.getInstance().setCombat(shooter, player);
+                combat.setCombat(player, shooter);
+                combat.setCombat(shooter, player);
             }
         }
 
-        if (Combat.getInstance().getConfig().getBoolean("link-tnt", true) && damager instanceof TNTPrimed tnt) {
+        if (combat.getConfig().getBoolean("link-tnt", true) && damager instanceof TNTPrimed tnt) {
             if (tnt.getSource() instanceof Player source) {
                 if (source.getUniqueId().equals(player.getUniqueId())) return;
-                Combat.getInstance().setCombat(player, source);
-                Combat.getInstance().setCombat(source, player);
+                combat.setCombat(player, source);
+                combat.setCombat(source, player);
             }
         }
     }

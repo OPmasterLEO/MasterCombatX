@@ -1,7 +1,6 @@
 package net.opmasterleo.combat.listener;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -10,20 +9,33 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 
 import net.opmasterleo.combat.Combat;
 
-public class PlayerCommandPreprocessListener implements Listener {
+public final class PlayerCommandPreprocessListener implements Listener {
+
+    private Set<String> blockedCommands;
+
+    public PlayerCommandPreprocessListener() {
+        reloadBlockedCommands();
+    }
+
+    public void reloadBlockedCommands() {
+        blockedCommands = new java.util.HashSet<>();
+        for (String cmd : Combat.getInstance().getConfig().getStringList("Commands.Blocked")) {
+            blockedCommands.add(cmd.toLowerCase().trim());
+        }
+    }
 
     @EventHandler
     public void handle(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
-        String command = event.getMessage().substring(1);
+        String command = event.getMessage().substring(1).toLowerCase().trim();
+        String baseCommand = command.split(" ")[0];
 
         if (Combat.getInstance().isInCombat(player)) {
-            List<String> list = (List<String>) Combat.getInstance().getConfig().getList("Commands.Blocked", new ArrayList<>());
-            list.replaceAll(String::toLowerCase);
-
-            if (list.contains(command.toLowerCase()) || list.contains(command.split(" ")[0].toLowerCase())) {
+            if (blockedCommands.contains(command) || blockedCommands.contains(baseCommand)) {
                 event.setCancelled(true);
-                player.sendMessage(Combat.getInstance().getMessage("Messages.Prefix") + Combat.getInstance().getMessage("Commands.Format").replaceAll("%command%", command));
+                String prefix = Combat.getInstance().getMessage("Messages.Prefix");
+                String format = Combat.getInstance().getMessage("Commands.Format");
+                player.sendMessage(prefix + format.replace("%command%", baseCommand));
             }
         }
     }

@@ -16,22 +16,10 @@ public class EntityPlaceListener implements Listener {
     public void onBlockPlace(BlockPlaceEvent event) {
         if (event.isCancelled()) return;
 
-        Player player = event.getPlayer();
         if (event.getBlock().getType() == Material.END_CRYSTAL) {
+            Player player = event.getPlayer();
             Entity crystal = event.getBlock().getWorld().spawnEntity(event.getBlock().getLocation(), EntityType.END_CRYSTAL);
             Combat.getInstance().registerCrystalPlacer(crystal, player);
         }
-    }
-
-    @EventHandler
-    public void onEntityPlace(BlockPlaceEvent event) {
-        if (event.getBlock().getType() != Material.END_CRYSTAL) {
-            return;
-        }
-
-        Player player = event.getPlayer();
-        Entity crystal = event.getBlock().getWorld().spawnEntity(event.getBlock().getLocation(), EntityType.END_CRYSTAL);
-
-        Combat.getInstance().getCrystalManager().setPlacer(crystal, player);
     }
 }

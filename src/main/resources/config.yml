@@ -34,6 +34,7 @@ Messages:
   NowInCombat: '' # empty = disabled
   NoLongerInCombat: '' # empty = disabled
   LogoutInCombat: '' # empty = disabled
+  ElytraDisabled: '&cElytra usage is disabled while in combat.' # <--- add this line
 
 # Enable custom death messages
 # This feature does not modify vanilla death messages.
@@ -73,7 +74,7 @@ Commands:
 EnderPearl:
   Enabled: false # Enables restrictions on ender pearl usage during combat
   Distance: 25 # Maximum allowed teleport distance with ender pearls
-  Format: 'You cannot teleport that far away in combat!'
+  Format: '&cYou cannot teleport that far away in combat!'
 
 # MasterCombat can link pets, such as wolves, cats, and other animals that can be tamed, to their owner.
 # This will only link the attacker, not the entity that was attacked.

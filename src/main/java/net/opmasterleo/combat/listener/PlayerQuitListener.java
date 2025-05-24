@@ -14,8 +14,9 @@ public class PlayerQuitListener implements Listener {
         Player player = event.getPlayer();
 
         if (Combat.getInstance().isInCombat(player)) {
-            player.setHealth(0.0);
-
+            if (player.getHealth() > 0.0) {
+                player.setHealth(0.0);
+            }
             String logoutMsg = Combat.getInstance().getMessage("Messages.LogoutInCombat");
             if (logoutMsg != null && !logoutMsg.isEmpty()) {
                 Bukkit.broadcastMessage(Combat.getInstance().getMessage("Messages.Prefix") + logoutMsg.replace("%player%", player.getName()));
