@@ -149,20 +149,25 @@ public class Combat extends JavaPlugin implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         if (player.isOp() && getConfig().getBoolean("update-notify-chat", false)) {
-            String pluginName = getDescription().getName();
-            String currentVersion = getDescription().getVersion();
+            // Run update check async, then send message sync
+            Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+                String pluginName = getDescription().getName();
+                String currentVersion = getDescription().getVersion();
+                String latestVersion = Update.getLatestVersion();
 
-            if (Update.getLatestVersion() == null) {
-                player.sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
-                return;
-            }
-
-            if (currentVersion.equalsIgnoreCase(Update.getLatestVersion())) {
-                player.sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " version.");
-            } else {
-                player.sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version " + currentVersion +
-                        " but the latest is " + Update.getLatestVersion() + ".");
-            }
+                Bukkit.getScheduler().runTask(this, () -> {
+                    if (latestVersion == null) {
+                        player.sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
+                        return;
+                    }
+                    if (currentVersion.equalsIgnoreCase(latestVersion)) {
+                        player.sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " version.");
+                    } else {
+                        player.sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version " + currentVersion +
+                                " but the latest is " + latestVersion + ".");
+                    }
+                });
+            });
         }
     }
 
@@ -380,14 +385,23 @@ public class Combat extends JavaPlugin implements Listener {
     private void sendStartupMessage() {
         String version = getDescription().getVersion();
         String pluginName = getDescription().getName();
+
+        // Detect API type (bukkit/folia) and server jar name
+        String apiType;
         String serverJarName;
         boolean isFolia = Update.isFolia();
 
         try {
-            String[] packageParts = Bukkit.getServer().getClass().getPackage().getName().split("\\.");
-            serverJarName = packageParts.length > 3 ? packageParts[3] : (isFolia ? "Folia" : "Paper");
+            String serverName = Bukkit.getServer().getName(); // This is usually "Paper", "Purpur", "Leaf", etc.
+            serverJarName = serverName;
+            if (isFolia) {
+                apiType = "folia";
+            } else {
+                apiType = "bukkit";
+            }
         } catch (Exception e) {
-            serverJarName = isFolia ? "Folia" : "Paper";
+            apiType = isFolia ? "folia" : "bukkit";
+            serverJarName = isFolia ? "Folia" : "Unknown";
         }
 
         boolean worldGuardDetected = Bukkit.getPluginManager().getPlugin("WorldGuard") != null;
@@ -401,7 +415,7 @@ public class Combat extends JavaPlugin implements Listener {
             "&b   ____                _           _               \n" +
             "&b  / ___|___  _ __ ___ | |__   __ _| |_             \n" +
             "&b | |   / _ \\| '_ ` _ \\| '_ \\ / _` | __|   " + pluginName + " v" + version + "\n" +
-            "&b | |__| (_) | | | | | | |_) | (_| | |_    Currently using " + serverJarName + "\n" +
+            "&b | |__| (_) | | | | | | |_) | (_| | |_    Currently using " + apiType + " - " + serverJarName + "\n" +
             "&b  \\____\\___/|_| |_| |_|_.__/ \\__,_|\\__|   \n";
 
         for (String line : asciiArt.split("\n")) {

@@ -25,7 +25,11 @@ public class Update {
     }
 
     public static void checkForUpdates(Plugin plugin) {
-        Bukkit.getConsoleSender().sendMessage("Checking for updates…");
+        // Only print once, not in both command and async
+        if (!Boolean.getBoolean("combat.update.checking")) {
+            Bukkit.getConsoleSender().sendMessage("Checking for updates…");
+            System.setProperty("combat.update.checking", "true");
+        }
         if (isFolia()) {
             Bukkit.getGlobalRegionScheduler().execute(plugin, () -> performUpdateCheck(plugin));
         } else {
@@ -173,6 +177,9 @@ public class Update {
             }
         } catch (Exception e) {
             Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» An error occurred while checking for updates: " + e.getMessage());
+        } finally {
+            // After check, reset the flag so future checks print again
+            System.clearProperty("combat.update.checking");
         }
     }
 
