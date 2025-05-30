@@ -1,0 +1,17 @@
+name: ${project.name}
+main: net.opmasterleo.combat.Combat
+version: ${project.version}
+api-version: 1.21
+author: OPmasterLEO
+description: ${project.description}
+folia-supported: true
+depend:
+  - WorldGuard
+softdepend:
+  - ProtocolLib
+commands:
+  combat:
+    description: Main command for combat plugin.
+    usage: /combat <toggle|reload|update>
+    permission: combat.admin
+    permission-message: You do not have permission to use this command.
