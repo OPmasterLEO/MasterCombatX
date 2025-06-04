@@ -6,7 +6,7 @@
 
     <groupId>net.opmasterleo.combat</groupId>
     <artifactId>MasterCombatX</artifactId>
-    <version>4.4.3</version>
+    <version>4.4.4</version>
     <packaging>jar</packaging>
     <description>A super combat plugin that have identical system like DonutSMP and more.</description>
 
@@ -141,12 +141,12 @@
         <dependency>
             <groupId>org.zeroturnaround</groupId>
             <artifactId>zt-zip</artifactId>
-            <version>1.14</version>
+            <version>1.17</version>
         </dependency>
         <dependency>
             <groupId>com.comphenix.protocol</groupId>
             <artifactId>ProtocolLib</artifactId>
-            <version>4.7.0</version>
+            <version>5.1.0</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
