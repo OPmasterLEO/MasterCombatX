@@ -41,6 +41,7 @@ import net.opmasterleo.combat.listener.SelfCombatListener;
 import net.opmasterleo.combat.manager.CrystalManager;
 import net.opmasterleo.combat.manager.Update;
 import net.opmasterleo.combat.manager.WorldGuardUtil;
+import net.opmasterleo.combat.util.ChatUtil;
 
 @Getter
 public class Combat extends JavaPlugin implements Listener {
@@ -140,7 +141,7 @@ public class Combat extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(new PlayerQuitListener(), this);
         Bukkit.getPluginManager().registerEvents(new PlayerTeleportListener(), this);
         Bukkit.getPluginManager().registerEvents(new PlayerDeathListener(), this);
-        Bukkit.getPluginManager().registerEvents(new CustomDeathMessageListener(), this);
+        Bukkit.getPluginManager().registerEvents(new CustomDeathMessageListener(), this); // uses new system
         Bukkit.getPluginManager().registerEvents(new SelfCombatListener(), this);
         Bukkit.getPluginManager().registerEvents(this, this);
     }
