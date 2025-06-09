@@ -14,7 +14,7 @@ import org.bukkit.plugin.Plugin;
 
 public class Update {
 
-    private static final String GITHUB_API_URL = "https://api.github.com/repos/OPmasterLEO/MasterCombatX/releases/latest";
+    private static final String GITHUB_API_URL = "https://api.github.com/repos/OPmasterLEO/MasterCombat/releases/latest";
     private static String latestVersion;
     private static String downloadUrl;
     private static boolean updateConfirmationRequired = true;
@@ -209,7 +209,7 @@ public class Update {
         } catch (ClassNotFoundException e) {
             return false;
         } catch (IllegalStateException e) {
-            Bukkit.getConsoleSender().sendMessage("§c[MasterCombatX] Error checking for Folia: " + e.getMessage());
+            Bukkit.getConsoleSender().sendMessage("§c[MasterCombat] Error checking for Folia: " + e.getMessage());
             return false;
         }
     }

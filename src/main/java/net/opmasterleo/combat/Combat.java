@@ -82,9 +82,9 @@ public class Combat extends JavaPlugin implements Listener {
 
         if (Bukkit.getPluginManager().getPlugin("ProtocolLib") != null) {
             protocolManager = ProtocolLibrary.getProtocolManager();
-            Bukkit.getConsoleSender().sendMessage("§a[MasterCombatX] ProtocolLib detected and integrated.");
+            Bukkit.getConsoleSender().sendMessage("§a[MasterCombat] ProtocolLib detected and integrated.");
         } else {
-            Bukkit.getConsoleSender().sendMessage("§c[MasterCombatX] ProtocolLib not detected. Some features may not work.");
+            Bukkit.getConsoleSender().sendMessage("§c[MasterCombat] ProtocolLib not detected. Some features may not work.");
         }
 
         registerListeners();
@@ -120,7 +120,7 @@ public class Combat extends JavaPlugin implements Listener {
                 if (player != null) player.setGlowing(false);
             }
         }
-        Bukkit.getConsoleSender().sendMessage("§cMasterCombatX plugin has been disabled.");
+        Bukkit.getConsoleSender().sendMessage("§cMasterCombat plugin has been disabled.");
     }
 
     private void detectFolia() {
