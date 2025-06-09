@@ -1,8 +1,6 @@
 package net.opmasterleo.combat.listener;
 
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
@@ -41,12 +39,10 @@ public class CustomDeathMessageListener implements Listener {
 
         Component finalMessage = prefix.append(deathMessage);
 
-        // Send to all players (client-side translation)
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            player.sendMessage(finalMessage);
-        }
+        // Send to all players as a chat message
+        org.bukkit.Bukkit.getOnlinePlayers().forEach(player -> player.sendMessage(finalMessage));
 
-        // Prevent Bukkit from sending its own death message
-        event.deathMessage(null);
+        // Set the death message so it appears under the "You Died" screen and in chat
+        event.deathMessage(finalMessage);
     }
 }
