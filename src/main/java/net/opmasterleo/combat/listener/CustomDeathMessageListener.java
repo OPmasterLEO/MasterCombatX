@@ -39,10 +39,7 @@ public class CustomDeathMessageListener implements Listener {
 
         Component finalMessage = prefix.append(deathMessage);
 
-        // Send to all players as a chat message
-        org.bukkit.Bukkit.getOnlinePlayers().forEach(player -> player.sendMessage(finalMessage));
-
-        // Set the death message so it appears under the "You Died" screen and in chat
+        // Do NOT send to all players manually; Bukkit/Paper will handle chat and "You Died" screen
         event.deathMessage(finalMessage);
     }
 }
