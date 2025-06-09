@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.opmasterleo.combat</groupId>
-    <artifactId>MasterCombatX</artifactId>
+    <artifactId>MasterCombat</artifactId>
     <version>4.4.5</version>
     <packaging>jar</packaging>
     <description>A super combat plugin that have identical system like DonutSMP and more.</description>
