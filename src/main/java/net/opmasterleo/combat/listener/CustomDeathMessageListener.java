@@ -1,17 +1,17 @@
 package net.opmasterleo.combat.listener;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TranslatableComponent;
-import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.opmasterleo.combat.Combat;
-import net.opmasterleo.combat.util.ChatUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TranslatableComponent;
+import net.kyori.adventure.text.format.TextColor;
+import net.opmasterleo.combat.Combat;
+import net.opmasterleo.combat.util.ChatUtil;
 
 public class CustomDeathMessageListener implements Listener {
 
@@ -24,11 +24,14 @@ public class CustomDeathMessageListener implements Listener {
         Component prefix = ChatUtil.parse(prefixRaw);
 
         // Get the vanilla death message translation key and arguments
-        String deathKey = event.deathMessage() instanceof TranslatableComponent tc
-                ? tc.key()
-                : "death.attack.generic";
-        // Use the original arguments for the translation
-        Component deathMessage = Component.translatable(deathKey, event.deathMessage() instanceof TranslatableComponent tc ? tc.args() : Component.text(event.getEntity().getName()));
+        Component deathMessage;
+        if (event.deathMessage() instanceof TranslatableComponent tc) {
+            // Use the original translation key and arguments
+            deathMessage = Component.translatable(tc.key(), tc.args().toArray(new Component[0]));
+        } else {
+            // Fallback: generic death message with player name
+            deathMessage = Component.translatable("death.attack.generic", Component.text(event.getEntity().getName()));
+        }
 
         // Continue color from prefix into the death message
         TextColor lastColor = ChatUtil.getLastColor(prefix);
