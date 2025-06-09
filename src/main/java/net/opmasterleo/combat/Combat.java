@@ -41,7 +41,6 @@ import net.opmasterleo.combat.listener.SelfCombatListener;
 import net.opmasterleo.combat.manager.CrystalManager;
 import net.opmasterleo.combat.manager.Update;
 import net.opmasterleo.combat.manager.WorldGuardUtil;
-import net.opmasterleo.combat.util.ChatUtil;
 
 @Getter
 public class Combat extends JavaPlugin implements Listener {
@@ -83,9 +82,9 @@ public class Combat extends JavaPlugin implements Listener {
 
         if (Bukkit.getPluginManager().getPlugin("ProtocolLib") != null) {
             protocolManager = ProtocolLibrary.getProtocolManager();
-            Bukkit.getConsoleSender().sendMessage("§a[MasterCombatX] ProtocolLib detected and integrated.");
+            Bukkit.getConsoleSender().sendMessage("§a[MasterCombat] ProtocolLib detected and integrated.");
         } else {
-            Bukkit.getConsoleSender().sendMessage("§c[MasterCombatX] ProtocolLib not detected. Some features may not work.");
+            Bukkit.getConsoleSender().sendMessage("§c[MasterCombat] ProtocolLib not detected. Some features may not work.");
         }
 
         registerListeners();
@@ -121,7 +120,7 @@ public class Combat extends JavaPlugin implements Listener {
                 if (player != null) player.setGlowing(false);
             }
         }
-        Bukkit.getConsoleSender().sendMessage("§cMasterCombatX plugin has been disabled.");
+        Bukkit.getConsoleSender().sendMessage("§cMasterCombat plugin has been disabled.");
     }
 
     private void detectFolia() {
@@ -141,7 +140,7 @@ public class Combat extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(new PlayerQuitListener(), this);
         Bukkit.getPluginManager().registerEvents(new PlayerTeleportListener(), this);
         Bukkit.getPluginManager().registerEvents(new PlayerDeathListener(), this);
-        Bukkit.getPluginManager().registerEvents(new CustomDeathMessageListener(), this); // uses new system
+        Bukkit.getPluginManager().registerEvents(new CustomDeathMessageListener(), this);
         Bukkit.getPluginManager().registerEvents(new SelfCombatListener(), this);
         Bukkit.getPluginManager().registerEvents(this, this);
     }
