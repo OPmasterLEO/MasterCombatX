@@ -21,5 +21,5 @@ Original plugin from Master SMP (mastersmc.net) made by OPmasterLEO.
 2. Replace the old jar with the new one
 3. Delete the old `config.yml` and restart your server # NOT always required
    
-![bStats](https://bstats.org/signatures/bukkit/MasterCombat.svg)
+![bStats](https://bstats.org/signatures/bukkit/MasterCombatX.svg)
 <hr>
