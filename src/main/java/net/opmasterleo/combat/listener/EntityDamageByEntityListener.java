@@ -28,7 +28,6 @@ public final class EntityDamageByEntityListener implements Listener {
 
         if (damager instanceof Player damagerP) {
             if (damagerP.getUniqueId().equals(player.getUniqueId())) {
-                // Only allow self-combat if enabled
                 if (combat.getConfig().getBoolean("self-combat", false)) {
                     combat.setCombat(player, player);
                 }
@@ -61,7 +60,6 @@ public final class EntityDamageByEntityListener implements Listener {
         if (combat.getConfig().getBoolean("link-end-crystals", true) && damager.getType() == EntityType.END_CRYSTAL) {
             Player placer = combat.getCrystalManager().getPlacer(damager);
             if (placer != null) {
-                // Only allow self-combat if enabled
                 if (placer.getUniqueId().equals(player.getUniqueId()) && !combat.getConfig().getBoolean("self-combat", false)) {
                     return;
                 }

@@ -19,7 +19,6 @@ public final class PlayerMoveListener implements Listener {
             return;
         }
 
-        // Only restrict if the player actually moves to a different block (not just rotates)
         if (event.getFrom().getBlockX() == event.getTo().getBlockX()
                 && event.getFrom().getBlockY() == event.getTo().getBlockY()
                 && event.getFrom().getBlockZ() == event.getTo().getBlockZ()) {

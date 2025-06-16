@@ -165,7 +165,6 @@ public class Update {
     private static void performJarReplacement(Plugin plugin) {
         String pluginName = plugin.getDescription().getName();
         try {
-            // Place update in plugins/update/ (standard for Bukkit/Paper)
             File updateFolder = new File(plugin.getDataFolder().getParentFile(), "update");
             if (!updateFolder.exists() && !updateFolder.mkdirs()) {
                 Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to create update folder.");

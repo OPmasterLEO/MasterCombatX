@@ -124,14 +124,8 @@ untag-on-death: true
 # Default: true
 untag-on-enemy-death: true
 
-# Cooldown for movement checks in milliseconds
-movement-cooldown: 200
-
 # Timeout for update confirmation in milliseconds
 update-confirmation-timeout: 10000
 
 # Interval for update checks in minutes
 update-check-interval: 120
-
-# Anti-Cheat Integration: disables speed/fly effects while in combat
-AntiCheatIntegration: true

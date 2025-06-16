@@ -19,7 +19,6 @@ public final class PlayerTeleportListener implements Listener {
         final boolean enderPearlEnabled = combat.isEnderPearlEnabled();
         final boolean inCombat = combat.isInCombat(player);
 
-        // Restrict Elytra teleportation if disabled in config and player is in combat
         if (disableElytra && inCombat) {
             if (player.isGliding() || player.isFlying()) {
                 player.setGliding(false);
@@ -29,13 +28,11 @@ public final class PlayerTeleportListener implements Listener {
             }
         }
 
-        // Restrict EnderPearl teleportation if enabled in config and player is in combat
         if (enderPearlEnabled && inCombat && event.getCause() == PlayerTeleportEvent.TeleportCause.ENDER_PEARL) {
             Location from = event.getFrom();
             Location to = event.getTo();
             if (from == null || to == null) return;
 
-            // Only compare X/Z distance for efficiency
             double dx = from.getX() - to.getX();
             double dz = from.getZ() - to.getZ();
             double distance = Math.sqrt(dx * dx + dz * dz);

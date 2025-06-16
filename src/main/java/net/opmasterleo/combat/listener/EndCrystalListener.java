@@ -75,7 +75,6 @@ public class EndCrystalListener implements Listener {
     }
 
     private void handleCombat(Player damagedPlayer, Player placer) {
-        // Only allow self-combat if enabled in config
         if (damagedPlayer.equals(placer)) {
             if (Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
                 Combat.getInstance().setCombat(damagedPlayer, damagedPlayer);
@@ -94,7 +93,6 @@ public class EndCrystalListener implements Listener {
         Collection<Entity> nearbyEntities = world.getNearbyEntities(crystalLocation, 4.0, 4.0, 4.0);
         for (Entity entity : nearbyEntities) {
             if (entity instanceof Player placer) {
-                // Only allow self-combat if enabled in config
                 if (damagedPlayer.equals(placer) && !Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
                     break;
                 }

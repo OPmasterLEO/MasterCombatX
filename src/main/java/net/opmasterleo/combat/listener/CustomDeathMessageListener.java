@@ -21,17 +21,13 @@ public class CustomDeathMessageListener implements Listener {
         String prefixRaw = config.getString("CustomDeathMessage.prefix", "");
         Component prefix = ChatUtil.parse(prefixRaw);
 
-        // Get the vanilla death message translation key and arguments
         Component deathMessage;
         if (event.deathMessage() instanceof TranslatableComponent tc) {
-            // Use the original translation key and arguments
             deathMessage = Component.translatable(tc.key(), tc.args().toArray(new Component[0]));
         } else {
-            // Fallback: generic death message with player name
             deathMessage = Component.translatable("death.attack.generic", Component.text(event.getEntity().getName()));
         }
 
-        // Continue color from prefix into the death message
         TextColor lastColor = ChatUtil.getLastColor(prefix);
         if (lastColor != null) {
             deathMessage = deathMessage.colorIfAbsent(lastColor);
@@ -39,7 +35,6 @@ public class CustomDeathMessageListener implements Listener {
 
         Component finalMessage = prefix.append(deathMessage);
 
-        // Do NOT send to all players manually; Bukkit/Paper will handle chat and "You Died" screen
         event.deathMessage(finalMessage);
     }
 }

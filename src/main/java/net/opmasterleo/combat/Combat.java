@@ -54,7 +54,6 @@ public class Combat extends JavaPlugin implements Listener {
     private List<String> enabledWorlds;
     private boolean combatEnabled;
     private boolean glowingEnabled;
-    private boolean antiCheatIntegration;
     private WorldGuardUtil worldGuardUtil;
     private PlayerMoveListener playerMoveListener;
     private EndCrystalListener endCrystalListener;
@@ -74,7 +73,6 @@ public class Combat extends JavaPlugin implements Listener {
 
         combatEnabled = getConfig().getBoolean("combat-enabled", true);
         glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
-        antiCheatIntegration = getConfig().getBoolean("AntiCheatIntegration", true);
 
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
             worldGuardUtil = new WorldGuardUtil();
@@ -103,9 +101,7 @@ public class Combat extends JavaPlugin implements Listener {
 
         crystalManager = new CrystalManager();
 
-        // Register API
         MasterCombatAPIProvider.register(new MasterCombatAPIBackend(this));
-        // Fire API load event
         Bukkit.getPluginManager().callEvent(new MasterCombatLoadEvent());
     }
 
@@ -149,7 +145,6 @@ public class Combat extends JavaPlugin implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         if (player.isOp() && getConfig().getBoolean("update-notify-chat", false)) {
-            // Run update check async, then send message sync
             Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
                 String pluginName = getDescription().getName();
                 String currentVersion = getDescription().getVersion();
@@ -172,69 +167,53 @@ public class Combat extends JavaPlugin implements Listener {
     }
 
     private void startCombatTimer() {
+        Runnable timerTask = () -> {
+            long currentTime = System.currentTimeMillis();
+            Iterator<Map.Entry<UUID, Long>> iterator = combatPlayers.entrySet().iterator();
+
+            while (iterator.hasNext()) {
+                Map.Entry<UUID, Long> entry = iterator.next();
+                UUID uuid = entry.getKey();
+                Player player = Bukkit.getPlayer(uuid);
+
+                if (player == null) {
+                    iterator.remove();
+                    combatOpponents.remove(uuid);
+                    lastActionBarSeconds.remove(uuid);
+                    if (glowingEnabled) setPlayerGlowing(uuid, false);
+                    continue;
+                }
+
+                if (currentTime >= entry.getValue()) {
+                    handleCombatEnd(player, iterator);
+                    lastActionBarSeconds.remove(uuid);
+                    if (glowingEnabled) setPlayerGlowing(uuid, false);
+                } else {
+                    updateActionBar(player, entry.getValue(), currentTime);
+                    if (glowingEnabled) setPlayerGlowing(uuid, true);
+                }
+            }
+        };
+
         try {
             Class.forName("io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler");
-            GlobalRegionScheduler scheduler = Bukkit.getGlobalRegionScheduler();
-            scheduler.runAtFixedRate(this, task -> {
-                long currentTime = System.currentTimeMillis();
-                Iterator<Map.Entry<UUID, Long>> iterator = combatPlayers.entrySet().iterator();
-
-                while (iterator.hasNext()) {
-                    Map.Entry<UUID, Long> entry = iterator.next();
-                    UUID uuid = entry.getKey();
-                    Player player = Bukkit.getPlayer(uuid);
-
-                    if (player == null) {
-                        iterator.remove();
-                        combatOpponents.remove(uuid);
-                        lastActionBarSeconds.remove(uuid);
-                        // Only remove glowing if it was previously enabled
-                        if (glowingEnabled) setPlayerGlowing(uuid, false);
-                        continue;
-                    }
-
-                    if (currentTime >= entry.getValue()) {
-                        handleCombatEnd(player, iterator);
-                        lastActionBarSeconds.remove(uuid);
-                        if (glowingEnabled) setPlayerGlowing(uuid, false);
-                    } else {
-                        updateActionBar(player, entry.getValue(), currentTime);
-                        // Only apply glowing if enabled in config
-                        if (glowingEnabled) setPlayerGlowing(uuid, true);
-                        // Do NOT call setPlayerGlowing(uuid, false) here if disabled
-                    }
-                }
-            }, 20L, 20L);
+            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> {
+                timerTask.run();
+            }, 20L, getDynamicInterval());
         } catch (ClassNotFoundException e) {
-            Bukkit.getScheduler().scheduleAsyncRepeatingTask(this, () -> {
-                long currentTime = System.currentTimeMillis();
-                Iterator<Map.Entry<UUID, Long>> iterator = combatPlayers.entrySet().iterator();
-
-                while (iterator.hasNext()) {
-                    Map.Entry<UUID, Long> entry = iterator.next();
-                    UUID uuid = entry.getKey();
-                    Player player = Bukkit.getPlayer(uuid);
-
-                    if (player == null) {
-                        iterator.remove();
-                        combatOpponents.remove(uuid);
-                        lastActionBarSeconds.remove(uuid);
-                        if (glowingEnabled) setPlayerGlowing(uuid, false);
-                        continue;
-                    }
-
-                    if (currentTime >= entry.getValue()) {
-                        handleCombatEnd(player, iterator);
-                        lastActionBarSeconds.remove(uuid);
-                        if (glowingEnabled) setPlayerGlowing(uuid, false);
-                    } else {
-                        updateActionBar(player, entry.getValue(), currentTime);
-                        if (glowingEnabled) setPlayerGlowing(uuid, true);
-                        // Do NOT call setPlayerGlowing(uuid, false) here if disabled
-                    }
-                }
-            }, 20, 20);
+            Bukkit.getScheduler().runTaskTimerAsynchronously(this, timerTask, 20L, getDynamicInterval());
         }
+    }
+
+    private long getDynamicInterval() {
+        double tps = 20.0;
+        try {
+            tps = Bukkit.getServer().getTPS()[0];
+        } catch (Throwable ignored) {}
+        if (tps >= 19.5) return 20L;
+        if (tps >= 18.0) return 30L;
+        if (tps >= 16.0) return 40L;
+        return 60L;
     }
 
     private void setPlayerGlowing(UUID uuid, boolean glowing) {
@@ -307,14 +286,6 @@ public class Combat extends JavaPlugin implements Listener {
         player.setGliding(false);
         player.setFlying(false);
         player.setAllowFlight(false);
-        // Anti-Cheat Integration: Remove speed/fly potion effects if enabled
-        if (antiCheatIntegration) {
-            player.setWalkSpeed(0.2f); // reset to default
-            player.setFlySpeed(0.1f);  // reset to default
-            player.getActivePotionEffects().stream()
-                .filter(effect -> effect.getType().getName().equalsIgnoreCase("SPEED") || effect.getType().getName().equalsIgnoreCase("LEVITATION"))
-                .forEach(effect -> player.removePotionEffect(effect.getType()));
-        }
     }
 
     public Player getCombatOpponent(Player player) {
@@ -348,9 +319,7 @@ public class Combat extends JavaPlugin implements Listener {
             enabledWorlds = List.of("world");
         }
         glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
-        antiCheatIntegration = getConfig().getBoolean("AntiCheatIntegration", true);
 
-        // Cache config values for performance
         disableElytra = getConfig().getBoolean("disable-elytra", false);
         enderPearlEnabled = getConfig().getBoolean("EnderPearl.Enabled", false);
         enderPearlDistance = getConfig().getLong("EnderPearl.Distance", 0);
@@ -358,12 +327,10 @@ public class Combat extends JavaPlugin implements Listener {
         if (elytraDisabledMsg == null || elytraDisabledMsg.isEmpty()) {
             elytraDisabledMsg = "§cElytra usage is disabled while in combat.";
         }
-        // Cache ignored projectiles set
         ignoredProjectiles.clear();
         List<String> ignoredList = getConfig().getStringList("ignored-projectiles");
         for (String s : ignoredList) ignoredProjectiles.add(s.toUpperCase());
 
-        // Remove glowing from all players if disabled in config
         if (!glowingEnabled) {
             for (UUID uuid : combatPlayers.keySet()) {
                 setPlayerGlowing(uuid, false);
@@ -371,7 +338,6 @@ public class Combat extends JavaPlugin implements Listener {
         }
     }
 
-    // Add getters for cached config values for use in listeners
     public boolean isDisableElytra() { return disableElytra; }
     public boolean isEnderPearlEnabled() { return enderPearlEnabled; }
     public long getEnderPearlDistance() { return enderPearlDistance; }
@@ -386,13 +352,12 @@ public class Combat extends JavaPlugin implements Listener {
         String version = getDescription().getVersion();
         String pluginName = getDescription().getName();
 
-        // Detect API type (bukkit/folia) and server jar name
         String apiType;
         String serverJarName;
         boolean isFolia = Update.isFolia();
 
         try {
-            String serverName = Bukkit.getServer().getName(); // This is usually "Paper", "Purpur", "Leaf", etc.
+            String serverName = Bukkit.getServer().getName();
             serverJarName = serverName;
             if (isFolia) {
                 apiType = "folia";
