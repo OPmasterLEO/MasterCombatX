@@ -34,6 +34,12 @@ public final class CrystalManager {
                 return null;
             }
         }
+        // Prevent returning self if self-combat is false
+        if (!Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
+            Entity damaged = crystal; // The context expects the damaged player to be checked elsewhere
+            // This method can't know the damaged player, so skip here
+            // The check is handled in listeners
+        }
         return placer;
     }
 
