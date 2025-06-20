@@ -8,9 +8,12 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
 
 import net.opmasterleo.combat.Combat;
 import net.opmasterleo.combat.api.MasterCombatAPIProvider;
+import net.opmasterleo.combat.listener.NewbieProtectionListener;
+import net.opmasterleo.combat.manager.PlaceholderManager;
 import net.opmasterleo.combat.manager.Update;
 
 public class CombatCommand implements CommandExecutor, TabCompleter {
@@ -19,32 +22,44 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!sender.isOp()) {
-            sender.sendMessage(ChatColor.RED + "No permission!");
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(ChatColor.RED + "Only players can use this command.");
             return true;
         }
 
-        if (args.length == 0) {
-            String pluginName = Combat.getInstance().getDescription().getName();
-            String pluginVersion = Combat.getInstance().getDescription().getVersion();
-            String pluginAuthor = Combat.getInstance().getDescription().getAuthors().get(0);
+        Combat combat = Combat.getInstance();
+        NewbieProtectionListener protectionListener = combat.getNewbieProtectionListener();
 
-            sender.sendMessage(ChatColor.AQUA + "[" + pluginName + "]» " + ChatColor.GRAY +
-                    "This server is running " + pluginName + " version " + ChatColor.GREEN + "v" + pluginVersion +
-                    ChatColor.GRAY + " by " + ChatColor.YELLOW + pluginAuthor);
+        if (args.length == 0) {
+            sendHelp(sender);
             return true;
         }
 
         switch (args[0].toLowerCase()) {
+            case "removeprotect":
+                if (!protectionListener.isProtected(player)) {
+                    player.sendMessage(ChatColor.RED + "You are not protected.");
+                    return true;
+                }
+                String disableMessage = PlaceholderManager.applyPlaceholders(player,
+                        combat.getConfig().getString("NewbieProtection.disableMessage"), 0);
+                player.sendMessage(disableMessage);
+                break;
+
+            case "confirm":
+                protectionListener.removeProtection(player);
+                player.sendMessage(ChatColor.YELLOW + "PvP protection disabled. You are now vulnerable.");
+                break;
+
             case "reload":
                 Combat.getInstance().reloadCombatConfig();
                 sender.sendMessage(ChatColor.GREEN + "Config reloaded!");
                 break;
 
             case "toggle":
-                Combat combat = Combat.getInstance();
-                combat.setCombatEnabled(!combat.isCombatEnabled());
-                String status = combat.isCombatEnabled() ? ChatColor.GREEN + "enabled" : ChatColor.RED + "disabled";
+                Combat combatInstance = Combat.getInstance();
+                combatInstance.setCombatEnabled(!combatInstance.isCombatEnabled());
+                String status = combatInstance.isCombatEnabled() ? ChatColor.GREEN + "enabled" : ChatColor.RED + "disabled";
                 sender.sendMessage(ChatColor.YELLOW + "Combat has been " + status + ChatColor.YELLOW + ".");
                 break;
 

@@ -11,10 +11,10 @@
 generated-by-version: "v${project.version}" # DO NOT CHANGE
  
 # Notify opped players about updates when they join the server
-update-notify-chat: false
+update-notify-chat: true
 
 # Duration of the combat timer in seconds
-Duration: 15
+Duration: 20
 
 # Enable combat globally
 combat-enabled: true
@@ -75,6 +75,19 @@ EnderPearl:
   Enabled: false # Enables restrictions on ender pearl usage during combat
   Distance: 25 # Maximum allowed teleport distance with ender pearls
   Format: '&cYou cannot teleport that far away in combat!'
+
+NewbieProtection:
+  enabled: true
+  time: 300 # Time in seconds
+  disableCommand: /combat removeprotect
+  protectedMessage: "You are protected from PvP for %time% seconds."
+  DisabledMessage: "You are no longer protected from PvP."
+  disableMessage: "Warning! You'll be vulnerable to PvP. Use /combat %command% confirm to disable protection."
+  blockedMessages:
+    type: ActionBar # Type of message to show, can be ActionBar, Chat, title, etc.
+    messages:
+      TriedAttackMessage: "You cannot attack while protected. Use /combat %command% to disable."
+      AttackerMessage: "You cannot attack that user while in protected mode."
 
 # MasterCombat can link pets, such as wolves, cats, and other animals that can be tamed, to their owner.
 # This will only link the attacker, not the entity that was attacked.

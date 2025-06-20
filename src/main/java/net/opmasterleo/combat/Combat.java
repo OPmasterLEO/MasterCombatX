@@ -38,6 +38,7 @@ import net.opmasterleo.combat.listener.PlayerMoveListener;
 import net.opmasterleo.combat.listener.PlayerQuitListener;
 import net.opmasterleo.combat.listener.PlayerTeleportListener;
 import net.opmasterleo.combat.listener.SelfCombatListener;
+import net.opmasterleo.combat.listener.NewbieProtectionListener;
 import net.opmasterleo.combat.manager.CrystalManager;
 import net.opmasterleo.combat.manager.Update;
 import net.opmasterleo.combat.manager.WorldGuardUtil;
@@ -65,6 +66,8 @@ public class Combat extends JavaPlugin implements Listener {
     private long enderPearlDistance;
     private String elytraDisabledMsg;
     private Set<String> ignoredProjectiles = new HashSet<>();
+
+    private NewbieProtectionListener newbieProtectionListener;
 
     @Override
     public void onEnable() {
@@ -100,6 +103,9 @@ public class Combat extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(new EntityPlaceListener(), this);
 
         crystalManager = new CrystalManager();
+
+        newbieProtectionListener = new NewbieProtectionListener();
+        Bukkit.getPluginManager().registerEvents(newbieProtectionListener, this);
 
         MasterCombatAPIProvider.register(new MasterCombatAPIBackend(this));
         Bukkit.getPluginManager().callEvent(new MasterCombatLoadEvent());
@@ -396,5 +402,9 @@ public class Combat extends JavaPlugin implements Listener {
         if (crystalManager != null) {
             crystalManager.setPlacer(crystal, placer);
         }
+    }
+
+    public NewbieProtectionListener getNewbieProtectionListener() {
+        return newbieProtectionListener;
     }
 }
