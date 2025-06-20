@@ -286,15 +286,6 @@ public class Combat extends JavaPlugin implements Listener {
             || player.getGameMode() == GameMode.SPECTATOR;
     }
 
-    private void updateCombatState(Player player, Player opponent, long duration) {
-        combatPlayers.put(player.getUniqueId(), duration);
-        if (opponent != null) {
-            combatPlayers.put(opponent.getUniqueId(), duration);
-            combatOpponents.put(player.getUniqueId(), opponent.getUniqueId());
-            combatOpponents.put(opponent.getUniqueId(), player.getUniqueId());
-        }
-    }
-
     private void sendCombatStartMessage(Player player) {
         if (!isInCombat(player) && !getConfig().getString("Messages.NowInCombat", "").isEmpty()) {
             player.sendMessage(getMessage("Messages.Prefix") + getMessage("Messages.NowInCombat"));
@@ -365,6 +356,10 @@ public class Combat extends JavaPlugin implements Listener {
 
     public void setCombatEnabled(boolean enabled) {
         this.combatEnabled = enabled;
+    }
+
+    public static Combat getInstance() {
+        return instance;
     }
 
     private void sendStartupMessage() {
