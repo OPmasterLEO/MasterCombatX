@@ -224,10 +224,8 @@ public class Combat extends JavaPlugin implements Listener {
 
     private void setPlayerGlowing(UUID uuid, boolean glowing) {
         Player player = Bukkit.getPlayer(uuid);
-        if (player != null && player.isOnline()) {
-            if (player.isGlowing() != glowing) {
-                player.setGlowing(glowing);
-            }
+        if (player != null && player.isOnline() && player.isGlowing() != glowing) {
+            player.setGlowing(glowing);
         }
     }
 
@@ -236,8 +234,19 @@ public class Combat extends JavaPlugin implements Listener {
         UUID opponentUUID = combatOpponents.remove(player.getUniqueId());
         if (opponentUUID != null) {
             combatOpponents.remove(opponentUUID);
+            if (glowingEnabled) setPlayerGlowing(opponentUUID, false);
         }
+        if (glowingEnabled) setPlayerGlowing(player.getUniqueId(), false);
         sendCombatEndMessage(player);
+    }
+
+    private void updateCombatState(Player player, Player opponent, long duration) {
+        combatPlayers.put(player.getUniqueId(), duration);
+        if (opponent != null) {
+            combatPlayers.put(opponent.getUniqueId(), duration);
+            combatOpponents.put(player.getUniqueId(), opponent.getUniqueId());
+            combatOpponents.put(opponent.getUniqueId(), player.getUniqueId());
+        }
     }
 
     private void sendCombatEndMessage(Player player) {
@@ -267,6 +276,8 @@ public class Combat extends JavaPlugin implements Listener {
         updateCombatState(player, opponent, duration);
         sendCombatStartMessage(player);
         restrictMovement(player);
+        if (glowingEnabled) setPlayerGlowing(player.getUniqueId(), true);
+        if (glowingEnabled && opponent != null) setPlayerGlowing(opponent.getUniqueId(), true);
     }
 
     private boolean shouldBypass(Player player) {
@@ -277,9 +288,11 @@ public class Combat extends JavaPlugin implements Listener {
 
     private void updateCombatState(Player player, Player opponent, long duration) {
         combatPlayers.put(player.getUniqueId(), duration);
-        combatPlayers.put(opponent.getUniqueId(), duration);
-        combatOpponents.put(player.getUniqueId(), opponent.getUniqueId());
-        combatOpponents.put(opponent.getUniqueId(), player.getUniqueId());
+        if (opponent != null) {
+            combatPlayers.put(opponent.getUniqueId(), duration);
+            combatOpponents.put(player.getUniqueId(), opponent.getUniqueId());
+            combatOpponents.put(opponent.getUniqueId(), player.getUniqueId());
+        }
     }
 
     private void sendCombatStartMessage(Player player) {

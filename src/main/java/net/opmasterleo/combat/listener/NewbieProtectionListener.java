@@ -66,6 +66,24 @@ public class NewbieProtectionListener implements Listener {
         }
     }
 
+    private void sendBlockedMessage(Player player, String messageKey, long time) {
+        Combat combat = Combat.getInstance();
+        String type = combat.getConfig().getString("NewbieProtection.blockedMessages.type", "Chat");
+        String msg = PlaceholderManager.applyPlaceholders(player,
+                combat.getConfig().getString("NewbieProtection.blockedMessages." + messageKey), time);
+        if (msg == null || msg.isEmpty()) return;
+        switch (type.toLowerCase()) {
+            case "actionbar":
+                player.sendActionBar(msg);
+                break;
+            case "title":
+                player.sendTitle("", msg, 10, 60, 10);
+                break;
+            default:
+                player.sendMessage(msg);
+        }
+    }
+
     @EventHandler
     public void onEntityDamage(EntityDamageByEntityEvent event) {
         Entity victimEntity = event.getEntity();
@@ -94,18 +112,14 @@ public class NewbieProtectionListener implements Listener {
 
         if (victim != null && isProtected(victim)) {
             if (attacker != null) {
-                String message = PlaceholderManager.applyPlaceholders(attacker,
-                        Combat.getInstance().getConfig().getString("NewbieProtection.blockedMessages.AttackerMessage"), 0);
-                attacker.sendMessage(message);
+                sendBlockedMessage(attacker, "AttackerMessage", 0);
             }
             event.setCancelled(true);
             return;
         }
 
         if (attacker != null && isProtected(attacker)) {
-            String message = PlaceholderManager.applyPlaceholders(attacker,
-                    Combat.getInstance().getConfig().getString("NewbieProtection.blockedMessages.TriedAttackMessage"), 0);
-            attacker.sendMessage(message);
+            sendBlockedMessage(attacker, "TriedAttackMessage", 0);
             event.setCancelled(true);
         }
     }
