@@ -3,7 +3,11 @@ package net.opmasterleo.combat.listener;
 import net.opmasterleo.combat.Combat;
 import net.opmasterleo.combat.manager.PlaceholderManager;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
+import org.bukkit.entity.TNTPrimed;
+import org.bukkit.entity.EnderCrystal;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -36,24 +40,53 @@ public class NewbieProtectionListener implements Listener {
 
     @EventHandler
     public void onEntityDamage(EntityDamageByEntityEvent event) {
-        if (!(event.getDamager() instanceof Player attacker) || !(event.getEntity() instanceof Player victim)) return;
+        Entity victimEntity = event.getEntity();
+        Entity damagerEntity = event.getDamager();
+        Player victim = (victimEntity instanceof Player) ? (Player) victimEntity : null;
+        Player attacker = null;
 
-        Combat combat = Combat.getInstance();
-        long currentTime = System.currentTimeMillis();
-
-        // Expire protections if needed
-        expireProtections();
-
-        if (isProtected(victim)) {
-            String message = PlaceholderManager.applyPlaceholders(attacker,
-                    combat.getConfig().getString("NewbieProtection.blockedMessages.AttackerMessage"), 0);
-            attacker.sendMessage(message);
-            event.setCancelled(true);
+        // Direct player attack
+        if (damagerEntity instanceof Player) {
+            attacker = (Player) damagerEntity;
+        }
+        // Projectile (arrow, snowball, etc.)
+        else if (damagerEntity instanceof Projectile projectile && projectile.getShooter() instanceof Player shooter) {
+            attacker = shooter;
+        }
+        // TNT
+        else if (damagerEntity instanceof TNTPrimed tnt && tnt.getSource() instanceof Player tntSource) {
+            attacker = tntSource;
+        }
+        // End Crystal (use CrystalManager if available)
+        else if (damagerEntity instanceof EnderCrystal && Combat.getInstance().getCrystalManager() != null) {
+            Player placer = Combat.getInstance().getCrystalManager().getPlacer(damagerEntity);
+            if (placer != null) attacker = placer;
         }
 
-        if (isProtected(attacker)) {
+        expireProtections();
+
+        boolean mobsProtect = Combat.getInstance().getConfig().getBoolean("NewbieProtection.MobsProtect", false);
+
+        // Only apply protection if victim is a player, or if mobsProtect is true
+        if (victim == null && !mobsProtect) {
+            return;
+        }
+
+        // Block if victim is protected (PvP or PvE depending on config)
+        if (victim != null && isProtected(victim)) {
+            if (attacker != null) {
+                String message = PlaceholderManager.applyPlaceholders(attacker,
+                        Combat.getInstance().getConfig().getString("NewbieProtection.blockedMessages.AttackerMessage"), 0);
+                attacker.sendMessage(message);
+            }
+            event.setCancelled(true);
+            return;
+        }
+
+        // Block if attacker is protected (only if attacker is player)
+        if (attacker != null && isProtected(attacker)) {
             String message = PlaceholderManager.applyPlaceholders(attacker,
-                    combat.getConfig().getString("NewbieProtection.blockedMessages.TriedAttackMessage"), 0);
+                    Combat.getInstance().getConfig().getString("NewbieProtection.blockedMessages.TriedAttackMessage"), 0);
             attacker.sendMessage(message);
             event.setCancelled(true);
         }
