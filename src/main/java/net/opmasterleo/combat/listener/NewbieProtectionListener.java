@@ -110,15 +110,21 @@ public class NewbieProtectionListener implements Listener {
         Player victim = (victimEntity instanceof Player) ? (Player) victimEntity : null;
         Player attacker = null;
 
-        if (damagerEntity instanceof Player) {
-            attacker = (Player) damagerEntity;
+        // Always check if the damager is a player (e.g., breaking a crystal)
+        if (damagerEntity instanceof Player playerDamager) {
+            attacker = playerDamager;
         } else if (damagerEntity instanceof Projectile projectile && projectile.getShooter() instanceof Player shooter) {
             attacker = shooter;
         } else if (damagerEntity instanceof TNTPrimed tnt && tnt.getSource() instanceof Player tntSource) {
             attacker = tntSource;
         } else if (damagerEntity instanceof EnderCrystal && Combat.getInstance().getCrystalManager() != null) {
             Player placer = Combat.getInstance().getCrystalManager().getPlacer(damagerEntity);
-            if (placer != null) attacker = placer;
+            if (placer != null) {
+                attacker = placer;
+            } else if (event.getDamager() instanceof Player crystalBreaker) {
+                // If no placer, but the crystal was broken by a player, treat them as attacker
+                attacker = crystalBreaker;
+            }
         }
 
         expireProtections();
@@ -131,7 +137,8 @@ public class NewbieProtectionListener implements Listener {
 
         // Block protected player from damaging others with crystals (or any method)
         if (attacker != null && isProtected(attacker)) {
-            sendBlockedMessage(attacker, "TriedAttackMessage", 0);
+            // Always use the correct config path for the message
+            sendBlockedMessage(attacker, "messages.TriedAttackMessage", 0);
             event.setCancelled(true);
             return;
         }
