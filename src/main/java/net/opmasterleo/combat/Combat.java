@@ -96,7 +96,7 @@ public class Combat extends JavaPlugin implements Listener {
         newbieProtectionListener = new NewbieProtectionListener();
         Bukkit.getPluginManager().registerEvents(newbieProtectionListener, this);
 
-        MasterCombatAPIProvider.register(new MasterCombatAPIBackend(this)); // Deprecated, but required for API compatibility
+        MasterCombatAPIProvider.register(new MasterCombatAPIBackend(this));
         Bukkit.getPluginManager().callEvent(new MasterCombatLoadEvent());
     }
 
@@ -261,7 +261,7 @@ public class Combat extends JavaPlugin implements Listener {
 
         long duration = System.currentTimeMillis() + 1000 * getConfig().getLong("Duration", 0);
         Long current = combatPlayers.get(player.getUniqueId());
-        if (current != null && current >= duration) return; // Already tagged for longer or same
+        if (current != null && current >= duration) return;
         updateCombatState(player, opponent, duration);
         sendCombatStartMessage(player);
         restrictMovement(player);
@@ -355,10 +355,6 @@ public class Combat extends JavaPlugin implements Listener {
         this.combatEnabled = enabled;
     }
 
-    /**
-     * Singleton accessor for Combat plugin instance.
-     * Required for plugin-wide access.
-     */
     public static Combat getInstance() {
         return instance;
     }

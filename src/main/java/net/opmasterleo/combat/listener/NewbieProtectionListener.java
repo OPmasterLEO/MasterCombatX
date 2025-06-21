@@ -22,7 +22,6 @@ import java.util.UUID;
 
 public class NewbieProtectionListener implements Listener {
 
-    // Stores: player UUID -> [remainingSeconds, lastOnlineTimestamp]
     private final HashMap<UUID, ProtectionData> protectedPlayers = new HashMap<>();
 
     private static class ProtectionData {
@@ -73,7 +72,7 @@ public class NewbieProtectionListener implements Listener {
             if (elapsed > 0) {
                 data.remainingSeconds = Math.max(0, data.remainingSeconds - elapsed);
             }
-            data.lastOnlineMillis = now; // Not strictly needed, but for consistency
+            data.lastOnlineMillis = now;
         }
     }
 
