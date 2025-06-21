@@ -18,11 +18,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-
-import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler;
-import lombok.Getter;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.opmasterleo.combat.api.MasterCombatAPIBackend;
 import net.opmasterleo.combat.api.MasterCombatAPIProvider;
@@ -43,10 +38,8 @@ import net.opmasterleo.combat.manager.CrystalManager;
 import net.opmasterleo.combat.manager.Update;
 import net.opmasterleo.combat.manager.WorldGuardUtil;
 
-@Getter
 public class Combat extends JavaPlugin implements Listener {
 
-    @Getter
     private static Combat instance;
     private final HashMap<UUID, Long> combatPlayers = new HashMap<>();
     private final HashMap<UUID, UUID> combatOpponents = new HashMap<>();
@@ -59,7 +52,6 @@ public class Combat extends JavaPlugin implements Listener {
     private PlayerMoveListener playerMoveListener;
     private EndCrystalListener endCrystalListener;
     private CrystalManager crystalManager;
-    private ProtocolManager protocolManager;
 
     private boolean disableElytra;
     private boolean enderPearlEnabled;
@@ -70,6 +62,7 @@ public class Combat extends JavaPlugin implements Listener {
     private NewbieProtectionListener newbieProtectionListener;
 
     @Override
+    @SuppressWarnings("deprecation")
     public void onEnable() {
         saveDefaultConfig();
         instance = this;
@@ -82,7 +75,6 @@ public class Combat extends JavaPlugin implements Listener {
         }
 
         if (Bukkit.getPluginManager().getPlugin("ProtocolLib") != null) {
-            protocolManager = ProtocolLibrary.getProtocolManager();
             Bukkit.getConsoleSender().sendMessage("§a[MasterCombat] ProtocolLib detected and integrated.");
         } else {
             Bukkit.getConsoleSender().sendMessage("§c[MasterCombat] ProtocolLib not detected. Some features may not work.");
@@ -96,7 +88,7 @@ public class Combat extends JavaPlugin implements Listener {
         Update.notifyOnServerOnline(this);
 
         int pluginId = 25701;
-        Metrics metrics = new Metrics(this, pluginId);
+        new Metrics(this, pluginId);
 
         endCrystalListener = new EndCrystalListener();
         Bukkit.getPluginManager().registerEvents(endCrystalListener, this);
@@ -107,7 +99,7 @@ public class Combat extends JavaPlugin implements Listener {
         newbieProtectionListener = new NewbieProtectionListener();
         Bukkit.getPluginManager().registerEvents(newbieProtectionListener, this);
 
-        MasterCombatAPIProvider.register(new MasterCombatAPIBackend(this));
+        MasterCombatAPIProvider.register(new MasterCombatAPIBackend(this)); // Deprecated, but required for API compatibility
         Bukkit.getPluginManager().callEvent(new MasterCombatLoadEvent());
     }
 
@@ -125,15 +117,6 @@ public class Combat extends JavaPlugin implements Listener {
         Bukkit.getConsoleSender().sendMessage("§cMasterCombat plugin has been disabled.");
     }
 
-    private void detectFolia() {
-        try {
-            Class.forName("io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler");
-            Bukkit.getConsoleSender().sendMessage("§aFolia detected, Using Folia (multi-threaded task) system");
-        } catch (ClassNotFoundException e) {
-            Bukkit.getConsoleSender().sendMessage("§aPaper detected, using Paper (standard task scheduler) system");
-        }
-    }
-
     private void registerListeners() {
         playerMoveListener = new PlayerMoveListener();
         Bukkit.getPluginManager().registerEvents(new EntityDamageByEntityListener(), this);
@@ -148,6 +131,7 @@ public class Combat extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    @SuppressWarnings("deprecation")
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         if (player.isOp() && getConfig().getBoolean("update-notify-chat", false)) {
@@ -255,6 +239,7 @@ public class Combat extends JavaPlugin implements Listener {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void updateActionBar(Player player, long endTime, long currentTime) {
         long seconds = (endTime - currentTime + 999) / 1000;
         player.sendActionBar(getMessage("ActionBar.Format").replace("%seconds%", String.valueOf(seconds)));
@@ -358,10 +343,15 @@ public class Combat extends JavaPlugin implements Listener {
         this.combatEnabled = enabled;
     }
 
+    /**
+     * Singleton accessor for Combat plugin instance.
+     * Required for plugin-wide access.
+     */
     public static Combat getInstance() {
         return instance;
     }
 
+    @SuppressWarnings("deprecation")
     private void sendStartupMessage() {
         String version = getDescription().getVersion();
         String pluginName = getDescription().getName();
@@ -414,5 +404,21 @@ public class Combat extends JavaPlugin implements Listener {
 
     public NewbieProtectionListener getNewbieProtectionListener() {
         return newbieProtectionListener;
+    }
+
+    public HashMap<UUID, Long> getCombatPlayers() {
+        return combatPlayers;
+    }
+
+    public HashMap<UUID, UUID> getCombatOpponents() {
+        return combatOpponents;
+    }
+
+    public CrystalManager getCrystalManager() {
+        return crystalManager;
+    }
+
+    public boolean isCombatEnabled() {
+        return combatEnabled;
     }
 }

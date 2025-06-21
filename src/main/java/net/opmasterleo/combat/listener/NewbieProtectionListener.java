@@ -2,6 +2,7 @@ package net.opmasterleo.combat.listener;
 
 import net.opmasterleo.combat.Combat;
 import net.opmasterleo.combat.manager.PlaceholderManager;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -31,6 +32,16 @@ public class NewbieProtectionListener implements Listener {
             this.remainingSeconds = remainingSeconds;
             this.lastOnlineMillis = lastOnlineMillis;
         }
+    }
+
+    private String blockedMessageType;
+
+    public NewbieProtectionListener() {
+        reloadConfigCache();
+    }
+
+    public void reloadConfigCache() {
+        blockedMessageType = Combat.getInstance().getConfig().getString("NewbieProtection.blockedMessages.type", "chat").toLowerCase();
     }
 
     @EventHandler
@@ -68,29 +79,28 @@ public class NewbieProtectionListener implements Listener {
 
     private void sendBlockedMessage(Player player, String messageKey, long time) {
         Combat combat = Combat.getInstance();
-        String type = combat.getConfig().getString("NewbieProtection.blockedMessages.type", "chat").toLowerCase();
+        String type = blockedMessageType;
         String msg = PlaceholderManager.applyPlaceholders(player,
                 combat.getConfig().getString("NewbieProtection.blockedMessages." + messageKey), time);
         if (msg == null || msg.isEmpty()) return;
         try {
             switch (type) {
                 case "actionbar":
-                    player.sendActionBar(msg);
+                    player.sendActionBar(Component.text(msg));
                     break;
                 case "title":
-                    player.sendTitle("", msg, 10, 60, 10);
+                    player.showTitle(net.kyori.adventure.title.Title.title(Component.empty(), Component.text(msg)));
                     break;
                 case "subtitle":
-                    player.sendTitle("", "", 0, 0, 0);
-                    player.sendTitle("", msg, 10, 60, 10);
+                    player.showTitle(net.kyori.adventure.title.Title.title(Component.text(""), Component.text(msg)));
                     break;
                 case "chat":
                 default:
-                    player.sendMessage(msg);
+                    player.sendMessage(Component.text(msg));
                     break;
             }
         } catch (Throwable e) {
-            player.sendMessage(msg);
+            player.sendMessage(Component.text(msg));
         }
     }
 

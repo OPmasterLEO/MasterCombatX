@@ -6,6 +6,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import net.opmasterleo.combat.Combat;
+import net.kyori.adventure.text.Component;
 
 public class PlayerQuitListener implements Listener {
     @EventHandler
@@ -27,7 +28,7 @@ public class PlayerQuitListener implements Listener {
             }
             String logoutMsg = Combat.getInstance().getMessage("Messages.LogoutInCombat");
             if (logoutMsg != null && !logoutMsg.isEmpty()) {
-                Bukkit.broadcastMessage(Combat.getInstance().getMessage("Messages.Prefix") + logoutMsg.replace("%player%", player.getName()));
+                Bukkit.getServer().sendMessage(Component.text(Combat.getInstance().getMessage("Messages.Prefix") + logoutMsg.replace("%player%", player.getName())));
             }
         }
 
