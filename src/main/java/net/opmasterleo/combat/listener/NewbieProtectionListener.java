@@ -1,24 +1,25 @@
 package net.opmasterleo.combat.listener;
 
-import net.opmasterleo.combat.Combat;
-import net.opmasterleo.combat.manager.PlaceholderManager;
-import net.kyori.adventure.text.Component;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
+import org.bukkit.entity.EnderCrystal;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.TNTPrimed;
-import org.bukkit.entity.EnderCrystal;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.UUID;
+import net.kyori.adventure.text.Component;
+import net.opmasterleo.combat.Combat;
+import net.opmasterleo.combat.manager.PlaceholderManager;
 
 public class NewbieProtectionListener implements Listener {
 
@@ -36,17 +37,24 @@ public class NewbieProtectionListener implements Listener {
     private String blockedMessageType;
 
     public NewbieProtectionListener() {
+        // Do not call reloadConfigCache() here to avoid overridable method call in constructor
+    }
+
+    public void init() {
         reloadConfigCache();
     }
 
     public void reloadConfigCache() {
-        blockedMessageType = Combat.getInstance().getConfig().getString("NewbieProtection.blockedMessages.type", "chat").toLowerCase();
+        Combat combat = Combat.getInstance();
+        if (combat == null || combat.getConfig() == null) return;
+        blockedMessageType = combat.getConfig().getString("NewbieProtection.blockedMessages.type", "chat").toLowerCase();
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         Combat combat = Combat.getInstance();
+        if (combat == null || combat.getConfig() == null) return;
         if (!combat.getConfig().getBoolean("NewbieProtection.enabled", true)) return;
 
         if (!player.hasPlayedBefore()) {
@@ -137,22 +145,33 @@ public class NewbieProtectionListener implements Listener {
         }
 
         // Block protected player from damaging others with crystals (or any method)
-        if (attacker != null && isProtected(attacker)) {
+        boolean attackerProtected = attacker != null && isProtected(attacker);
+        boolean victimProtected = victim != null && isProtected(victim);
+
+        if (attackerProtected) {
+            // Tag both players if possible
+            if (attacker != null && victim != null) {
+                Combat.getInstance().setCombat(attacker, victim);
+            }
             // Only notify the protected player, not the victim
             sendBlockedMessage(attacker, "TriedAttackMessage", 0);
-            attacker.playSound(attacker.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+            if (attacker != null) {
+                attacker.playSound(attacker.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+            }
             event.setCancelled(true);
             return;
         }
-        // Block protected player from being damaged
-        if (victim != null && isProtected(victim)) {
+        if (victimProtected) {
+            // Tag both players if possible
+            if (attacker != null && victim != null) {
+                Combat.getInstance().setCombat(attacker, victim);
+            }
             // Only notify the protected victim and the attacker (if not protected)
             if (attacker != null) {
                 sendBlockedMessage(attacker, "AttackerMessage", 0);
             }
             sendBlockedMessage(victim, "TriedAttackMessage", 0);
             event.setCancelled(true);
-            return;
         }
     }
 

@@ -54,7 +54,7 @@ public class Combat extends JavaPlugin implements Listener {
     private boolean enderPearlEnabled;
     private long enderPearlDistance;
     private String elytraDisabledMsg;
-    private Set<String> ignoredProjectiles = ConcurrentHashMap.newKeySet();
+    private final Set<String> ignoredProjectiles = ConcurrentHashMap.newKeySet();
 
     private NewbieProtectionListener newbieProtectionListener;
 
@@ -85,7 +85,8 @@ public class Combat extends JavaPlugin implements Listener {
         Update.notifyOnServerOnline(this);
 
         int pluginId = 25701;
-        new Metrics(this, pluginId);
+        @SuppressWarnings("unused")
+        Metrics metrics = new Metrics(this, pluginId);
 
         endCrystalListener = new EndCrystalListener();
         Bukkit.getPluginManager().registerEvents(endCrystalListener, this);
@@ -228,7 +229,8 @@ public class Combat extends JavaPlugin implements Listener {
     }
 
     private void sendCombatEndMessage(Player player) {
-        if (!getConfig().getString("Messages.NoLongerInCombat", "").isEmpty()) {
+        String noLongerInCombatMsg = getConfig().getString("Messages.NoLongerInCombat", "");
+        if (noLongerInCombatMsg != null && !noLongerInCombatMsg.isEmpty()) {
             player.sendMessage(getMessage("Messages.Prefix") + getMessage("Messages.NoLongerInCombat"));
         }
     }
@@ -260,6 +262,7 @@ public class Combat extends JavaPlugin implements Listener {
         if (shouldBypass(player)) return;
 
         long duration = System.currentTimeMillis() + 1000 * getConfig().getLong("Duration", 0);
+        if (player == null) return;
         Long current = combatPlayers.get(player.getUniqueId());
         if (current != null && current >= duration) return;
         updateCombatState(player, opponent, duration);
@@ -312,6 +315,7 @@ public class Combat extends JavaPlugin implements Listener {
 
     public String getMessage(String key) {
         String message = getConfig().getString(key, "");
+        if (message == null) message = "";
         return LegacyComponentSerializer.legacySection().serialize(
             LegacyComponentSerializer.legacy('&').deserialize(message)
         );
