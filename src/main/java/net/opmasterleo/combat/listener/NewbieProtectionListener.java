@@ -137,8 +137,10 @@ public class NewbieProtectionListener implements Listener {
 
         // Block protected player from damaging others with crystals (or any method)
         if (attacker != null && isProtected(attacker)) {
-            // Always use the correct config path for the message
+            // Send blocked message with correct type
             sendBlockedMessage(attacker, "messages.TriedAttackMessage", 0);
+            // Play villager growl sound to protected player
+            attacker.playSound(attacker.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
             event.setCancelled(true);
             return;
         }
