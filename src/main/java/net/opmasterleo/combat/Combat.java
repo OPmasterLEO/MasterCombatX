@@ -1,12 +1,9 @@
 package net.opmasterleo.combat;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
@@ -41,9 +38,9 @@ import net.opmasterleo.combat.manager.WorldGuardUtil;
 public class Combat extends JavaPlugin implements Listener {
 
     private static Combat instance;
-    private final HashMap<UUID, Long> combatPlayers = new HashMap<>();
-    private final HashMap<UUID, UUID> combatOpponents = new HashMap<>();
-    private final HashMap<UUID, Long> lastActionBarSeconds = new HashMap<>();
+    private final ConcurrentHashMap<UUID, Long> combatPlayers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, UUID> combatOpponents = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, Long> lastActionBarSeconds = new ConcurrentHashMap<>();
     private boolean enableWorldsEnabled;
     private List<String> enabledWorlds;
     private boolean combatEnabled;
@@ -57,7 +54,7 @@ public class Combat extends JavaPlugin implements Listener {
     private boolean enderPearlEnabled;
     private long enderPearlDistance;
     private String elytraDisabledMsg;
-    private Set<String> ignoredProjectiles = new HashSet<>();
+    private Set<String> ignoredProjectiles = ConcurrentHashMap.newKeySet();
 
     private NewbieProtectionListener newbieProtectionListener;
 
@@ -159,30 +156,26 @@ public class Combat extends JavaPlugin implements Listener {
     private void startCombatTimer() {
         Runnable timerTask = () -> {
             long currentTime = System.currentTimeMillis();
-            Iterator<Map.Entry<UUID, Long>> iterator = combatPlayers.entrySet().iterator();
-
-            while (iterator.hasNext()) {
-                Map.Entry<UUID, Long> entry = iterator.next();
-                UUID uuid = entry.getKey();
+            combatPlayers.forEach((uuid, endTime) -> {
                 Player player = Bukkit.getPlayer(uuid);
 
                 if (player == null) {
-                    iterator.remove();
+                    combatPlayers.remove(uuid);
                     combatOpponents.remove(uuid);
                     lastActionBarSeconds.remove(uuid);
                     if (glowingEnabled) setPlayerGlowing(uuid, false);
-                    continue;
+                    return;
                 }
 
-                if (currentTime >= entry.getValue()) {
-                    handleCombatEnd(player, iterator);
+                if (currentTime >= endTime) {
+                    handleCombatEnd(player);
                     lastActionBarSeconds.remove(uuid);
                     if (glowingEnabled) setPlayerGlowing(uuid, false);
                 } else {
-                    updateActionBar(player, entry.getValue(), currentTime);
+                    updateActionBar(player, endTime, currentTime);
                     if (glowingEnabled) setPlayerGlowing(uuid, true);
                 }
-            }
+            });
         };
 
         try {
@@ -213,14 +206,15 @@ public class Combat extends JavaPlugin implements Listener {
         }
     }
 
-    private void handleCombatEnd(Player player, Iterator<Map.Entry<UUID, Long>> iterator) {
-        iterator.remove();
-        UUID opponentUUID = combatOpponents.remove(player.getUniqueId());
+    private void handleCombatEnd(Player player) {
+        UUID playerUUID = player.getUniqueId();
+        combatPlayers.remove(playerUUID);
+        UUID opponentUUID = combatOpponents.remove(playerUUID);
         if (opponentUUID != null) {
             combatOpponents.remove(opponentUUID);
             if (glowingEnabled) setPlayerGlowing(opponentUUID, false);
         }
-        if (glowingEnabled) setPlayerGlowing(player.getUniqueId(), false);
+        if (glowingEnabled) setPlayerGlowing(playerUUID, false);
         sendCombatEndMessage(player);
     }
 
@@ -246,11 +240,12 @@ public class Combat extends JavaPlugin implements Listener {
     }
 
     public boolean isCombatEnabledInWorld(Player player) {
-        return !enableWorldsEnabled || enabledWorlds.contains(player.getWorld().getName());
+        return enabledWorlds == null || !enableWorldsEnabled || enabledWorlds.contains(player.getWorld().getName());
     }
 
     public boolean isInCombat(Player player) {
-        return combatPlayers.getOrDefault(player.getUniqueId(), 0L) > System.currentTimeMillis();
+        Long until = combatPlayers.get(player.getUniqueId());
+        return until != null && until > System.currentTimeMillis();
     }
 
     public void setCombat(Player player, Player opponent) {
@@ -265,11 +260,21 @@ public class Combat extends JavaPlugin implements Listener {
         if (shouldBypass(player)) return;
 
         long duration = System.currentTimeMillis() + 1000 * getConfig().getLong("Duration", 0);
+        Long current = combatPlayers.get(player.getUniqueId());
+        if (current != null && current >= duration) return; // Already tagged for longer or same
         updateCombatState(player, opponent, duration);
         sendCombatStartMessage(player);
         restrictMovement(player);
-        if (glowingEnabled) setPlayerGlowing(player.getUniqueId(), true);
-        if (glowingEnabled && opponent != null) setPlayerGlowing(opponent.getUniqueId(), true);
+        setPlayerGlowingIfNeeded(player.getUniqueId(), true);
+        if (glowingEnabled && opponent != null) setPlayerGlowingIfNeeded(opponent.getUniqueId(), true);
+    }
+
+    private void setPlayerGlowingIfNeeded(UUID uuid, boolean glowing) {
+        if (!glowingEnabled) return;
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null && player.isOnline() && player.isGlowing() != glowing) {
+            player.setGlowing(glowing);
+        }
     }
 
     private boolean shouldBypass(Player player) {
@@ -413,11 +418,11 @@ public class Combat extends JavaPlugin implements Listener {
         return newbieProtectionListener;
     }
 
-    public HashMap<UUID, Long> getCombatPlayers() {
+    public ConcurrentHashMap<UUID, Long> getCombatPlayers() {
         return combatPlayers;
     }
 
-    public HashMap<UUID, UUID> getCombatOpponents() {
+    public ConcurrentHashMap<UUID, UUID> getCombatOpponents() {
         return combatOpponents;
     }
 
