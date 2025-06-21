@@ -129,20 +129,21 @@ public class NewbieProtectionListener implements Listener {
             return;
         }
 
-        if (victim != null && isProtected(victim)) {
-            if (attacker != null) {
-                sendBlockedMessage(attacker, "AttackerMessage", 0);
-            }
-            if (victim != null) {
-                sendBlockedMessage(victim, "TriedAttackMessage", 0);
-            }
+        // Block protected player from damaging others with crystals (or any method)
+        if (attacker != null && isProtected(attacker)) {
+            sendBlockedMessage(attacker, "TriedAttackMessage", 0);
             event.setCancelled(true);
             return;
         }
 
-        if (attacker != null && isProtected(attacker)) {
-            sendBlockedMessage(attacker, "TriedAttackMessage", 0);
+        // Block protected player from being damaged
+        if (victim != null && isProtected(victim)) {
+            if (attacker != null) {
+                sendBlockedMessage(attacker, "AttackerMessage", 0);
+            }
+            sendBlockedMessage(victim, "TriedAttackMessage", 0);
             event.setCancelled(true);
+            return;
         }
     }
 
