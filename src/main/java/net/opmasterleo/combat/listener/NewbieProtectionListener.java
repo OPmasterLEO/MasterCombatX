@@ -68,27 +68,29 @@ public class NewbieProtectionListener implements Listener {
 
     private void sendBlockedMessage(Player player, String messageKey, long time) {
         Combat combat = Combat.getInstance();
-        String type = combat.getConfig().getString("NewbieProtection.blockedMessages.type", "Chat");
+        String type = combat.getConfig().getString("NewbieProtection.blockedMessages.type", "chat").toLowerCase();
         String msg = PlaceholderManager.applyPlaceholders(player,
                 combat.getConfig().getString("NewbieProtection.blockedMessages." + messageKey), time);
         if (msg == null || msg.isEmpty()) return;
-        switch (type.toLowerCase()) {
-            case "actionbar":
-                try {
+        try {
+            switch (type) {
+                case "actionbar":
                     player.sendActionBar(msg);
-                } catch (NoSuchMethodError | Exception e) {
-                    player.sendMessage(msg);
-                }
-                break;
-            case "title":
-                try {
+                    break;
+                case "title":
                     player.sendTitle("", msg, 10, 60, 10);
-                } catch (NoSuchMethodError | Exception e) {
+                    break;
+                case "subtitle":
+                    player.sendTitle("", "", 0, 0, 0);
+                    player.sendTitle("", msg, 10, 60, 10);
+                    break;
+                case "chat":
+                default:
                     player.sendMessage(msg);
-                }
-                break;
-            default:
-                player.sendMessage(msg);
+                    break;
+            }
+        } catch (Throwable e) {
+            player.sendMessage(msg);
         }
     }
 
