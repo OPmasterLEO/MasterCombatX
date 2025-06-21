@@ -79,8 +79,9 @@ public class NewbieProtectionListener implements Listener {
     private void sendBlockedMessage(Player player, String messageKey, long time) {
         Combat combat = Combat.getInstance();
         String type = blockedMessageType;
+        // Use correct config path for messages
         String msg = PlaceholderManager.applyPlaceholders(player,
-                combat.getConfig().getString("NewbieProtection.blockedMessages." + messageKey), time);
+                combat.getConfig().getString("NewbieProtection.blockedMessages.messages." + messageKey), time);
         if (msg == null || msg.isEmpty()) return;
         try {
             switch (type) {
@@ -137,16 +138,15 @@ public class NewbieProtectionListener implements Listener {
 
         // Block protected player from damaging others with crystals (or any method)
         if (attacker != null && isProtected(attacker)) {
-            // Send blocked message with correct type
-            sendBlockedMessage(attacker, "messages.TriedAttackMessage", 0);
-            // Play villager growl sound to protected player
+            // Only notify the protected player, not the victim
+            sendBlockedMessage(attacker, "TriedAttackMessage", 0);
             attacker.playSound(attacker.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
             event.setCancelled(true);
             return;
         }
-
         // Block protected player from being damaged
         if (victim != null && isProtected(victim)) {
+            // Only notify the protected victim and the attacker (if not protected)
             if (attacker != null) {
                 sendBlockedMessage(attacker, "AttackerMessage", 0);
             }
