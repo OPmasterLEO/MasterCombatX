@@ -66,12 +66,6 @@ public class EndCrystalListener implements Listener {
     private boolean handleCrystalDamageWithEvent(Entity damaged, Entity damager, EntityDamageByEntityEvent event) {
         Player damagedPlayer = (damaged instanceof Player) ? (Player) damaged : null;
         Player placer = Combat.getInstance().getCrystalManager().getPlacer(damager);
-        net.opmasterleo.combat.listener.NewbieProtectionListener protection = Combat.getInstance().getNewbieProtectionListener();
-        if (protection != null) {
-            if ((damagedPlayer != null && protection.isProtected(damagedPlayer)) || (placer != null && protection.isProtected(placer))) {
-                return true; // Block damage
-            }
-        }
         if (damagedPlayer != null) {
             if (placer != null) {
                 handleCombat(damagedPlayer, placer);

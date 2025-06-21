@@ -82,14 +82,14 @@ NewbieProtection:
   MobsProtect: false # Protects players from mobs during newbie protection
   time: 300 # Time in seconds
   disableCommand: /combat removeprotect
-  protectedMessage: "You are protected from PvP for %time% seconds."
-  DisabledMessage: "You are no longer protected from PvP."
-  disableMessage: "Warning! You'll be vulnerable to PvP. Use /combat %command% confirm to disable protection."
+  protectedMessage: "&aYou are protected from PvP for %time% seconds."
+  DisabledMessage: "&cYou are no longer protected from PvP."
+  disableMessage: "&cWarning! &fYou'll be vulnerable to PvP. Use /combat %command% confirm to disable protection."
   blockedMessages:
     type: ActionBar # Type of message to show, can be ActionBar, Chat, title, etc.
     messages:
-      TriedAttackMessage: "You cannot attack while protected. Use /combat %command% to disable."
-      AttackerMessage: "You cannot attack that user while in protected mode."
+      TriedAttackMessage: "&cYou cannot attack while protected. Use /combat %command% to disable."
+      AttackerMessage: "&cYou cannot attack that user while in protected mode."
 
 # Should MasterCombat tag players when they damage themselves?
 # Default: false
