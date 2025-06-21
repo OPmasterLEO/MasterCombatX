@@ -74,10 +74,18 @@ public class NewbieProtectionListener implements Listener {
         if (msg == null || msg.isEmpty()) return;
         switch (type.toLowerCase()) {
             case "actionbar":
-                player.sendActionBar(msg);
+                try {
+                    player.sendActionBar(msg);
+                } catch (NoSuchMethodError | Exception e) {
+                    player.sendMessage(msg);
+                }
                 break;
             case "title":
-                player.sendTitle("", msg, 10, 60, 10);
+                try {
+                    player.sendTitle("", msg, 10, 60, 10);
+                } catch (NoSuchMethodError | Exception e) {
+                    player.sendMessage(msg);
+                }
                 break;
             default:
                 player.sendMessage(msg);
@@ -113,6 +121,9 @@ public class NewbieProtectionListener implements Listener {
         if (victim != null && isProtected(victim)) {
             if (attacker != null) {
                 sendBlockedMessage(attacker, "AttackerMessage", 0);
+            }
+            if (victim != null) {
+                sendBlockedMessage(victim, "TriedAttackMessage", 0);
             }
             event.setCancelled(true);
             return;

@@ -8,10 +8,18 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import net.opmasterleo.combat.Combat;
 
 public class PlayerQuitListener implements Listener {
-
     @EventHandler
-    public void handle(PlayerQuitEvent event) {
+    public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
+        Combat combat = Combat.getInstance();
+        if (combat.isInCombat(player)) {
+            Player opponent = combat.getCombatOpponent(player);
+            if (opponent != null && opponent.isOnline() && !opponent.equals(player)) {
+                player.damage(1000.0, opponent);
+            } else {
+                player.damage(1000.0);
+            }
+        }
 
         if (Combat.getInstance().isInCombat(player)) {
             if (player.getHealth() > 0.0) {
