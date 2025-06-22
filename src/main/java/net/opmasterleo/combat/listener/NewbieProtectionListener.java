@@ -134,17 +134,35 @@ public class NewbieProtectionListener implements Listener {
 
         if (victim == null && !mobsProtect) return;
 
-        if (attacker != null && isProtected(attacker)) {
+        // Block protected player from damaging others (any method)
+        if (attacker != null && isActuallyProtected(attacker)) {
             sendBlockedMessage(attacker, msgTriedAttack);
             event.setCancelled(true);
             return;
         }
 
-        if (victim != null && isProtected(victim)) {
+        // Block damage to protected player
+        if (victim != null && isActuallyProtected(victim)) {
             if (attacker != null) sendBlockedMessage(attacker, msgAttacker);
             sendBlockedMessage(victim, msgTriedAttack);
             event.setCancelled(true);
         }
+    }
+
+    // Only send "no longer protected" message if the player was actually protected before
+    public boolean isActuallyProtected(Player player) {
+        Long end = protectionEnd.get(player.getUniqueId());
+        if (end == null) return false;
+        long left = end - System.currentTimeMillis();
+        if (left > 0) return true;
+        // Only send the message if the player was protected and the timer just expired
+        if (protectionEnd.containsKey(player.getUniqueId())) {
+            removeProtection(player);
+            if (msgDisabled != null && !msgDisabled.isEmpty()) {
+                sendMessage(player, PlaceholderManager.applyPlaceholders(player, msgDisabled, 0));
+            }
+        }
+        return false;
     }
 
     private void sendProtectedMessage(Player player) {
@@ -179,16 +197,6 @@ public class NewbieProtectionListener implements Listener {
         pausedTime.remove(player.getUniqueId());
         joinLocation.remove(player.getUniqueId());
         moveMessageSent.remove(player.getUniqueId());
-    }
-
-    public boolean isProtected(Player player) {
-        long left = getProtectionLeft(player);
-        if (left > 0) return true;
-        removeProtection(player);
-        if (msgDisabled != null && !msgDisabled.isEmpty()) {
-            sendMessage(player, PlaceholderManager.applyPlaceholders(player, msgDisabled, 0));
-        }
-        return false;
     }
 
     private long getProtectionLeft(Player player) {
