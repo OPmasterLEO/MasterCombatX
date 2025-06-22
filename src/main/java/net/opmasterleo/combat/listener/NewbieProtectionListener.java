@@ -19,7 +19,6 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.EventPriority;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.opmasterleo.combat.Combat;
 import net.opmasterleo.combat.manager.PlaceholderManager;
 import net.opmasterleo.combat.util.ChatUtil;
