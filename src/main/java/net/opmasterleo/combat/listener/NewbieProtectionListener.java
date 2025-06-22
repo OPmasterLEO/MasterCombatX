@@ -131,7 +131,9 @@ public class NewbieProtectionListener implements Listener {
         Player victim = (victimEntity instanceof Player) ? (Player) victimEntity : null;
         Player attacker = null;
 
+        // Always resolve crystal attacker using EndCrystalListener if available
         if (damagerEntity instanceof EnderCrystal && endCrystalListener != null) {
+            // Use EndCrystalListener to resolve the correct attacker for crystals
             attacker = endCrystalListener.resolveCrystalAttacker((EnderCrystal) damagerEntity, event);
         } else if (damagerEntity instanceof Player p) {
             attacker = p;
@@ -143,21 +145,23 @@ public class NewbieProtectionListener implements Listener {
             // fallback if EndCrystalListener is not set
             Player placer = Combat.getInstance().getCrystalManager().getPlacer(damagerEntity);
             if (placer != null) attacker = placer;
-            else if (damagerEntity instanceof Player crystalBreaker) attacker = crystalBreaker;
         }
 
         if (victim == null && !mobsProtect) return;
 
+        // --- CRYSTAL & ALL DAMAGE HANDLING ---
+        // Block protected player from damaging others (any method, including crystals)
         if (attacker != null && isActuallyProtected(attacker) && victim != null) {
             sendBlockedMessage(attacker, msgTriedAttack);
             event.setCancelled(true);
             return;
         }
 
+        // Block damage to protected player, but only show message to attacker (not to victim)
         if (victim != null && isActuallyProtected(victim)) {
             if (attacker != null) sendBlockedMessage(attacker, msgAttacker);
-            sendBlockedMessage(victim, msgTriedAttack);
             event.setCancelled(true);
+            return;
         }
     }
 
