@@ -16,8 +16,10 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.EventPriority;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.opmasterleo.combat.Combat;
 import net.opmasterleo.combat.manager.PlaceholderManager;
 
@@ -87,32 +89,32 @@ public class NewbieProtectionListener implements Listener {
     private void sendBlockedMessage(Player player, String messageKey, long time) {
         Combat combat = Combat.getInstance();
         String type = blockedMessageType;
-        // Use correct config path for messages
-        String msg = PlaceholderManager.applyPlaceholders(player,
-                combat.getConfig().getString("NewbieProtection.blockedMessages.messages." + messageKey), time);
-        if (msg == null || msg.isEmpty()) return;
+        String rawMsg = combat.getConfig().getString("NewbieProtection.blockedMessages.messages." + messageKey);
+        if (rawMsg == null || rawMsg.isEmpty()) return;
+        String msg = PlaceholderManager.applyPlaceholders(player, rawMsg, time);
+        Component component = LegacyComponentSerializer.legacy('&').deserialize(msg);
         try {
             switch (type) {
                 case "actionbar":
-                    player.sendActionBar(Component.text(msg));
+                    player.sendActionBar(component);
                     break;
                 case "title":
-                    player.showTitle(net.kyori.adventure.title.Title.title(Component.empty(), Component.text(msg)));
+                    player.showTitle(net.kyori.adventure.title.Title.title(Component.empty(), component));
                     break;
                 case "subtitle":
-                    player.showTitle(net.kyori.adventure.title.Title.title(Component.text(""), Component.text(msg)));
+                    player.showTitle(net.kyori.adventure.title.Title.title(Component.text(""), component));
                     break;
                 case "chat":
                 default:
-                    player.sendMessage(Component.text(msg));
+                    player.sendMessage(component);
                     break;
             }
         } catch (Throwable e) {
-            player.sendMessage(Component.text(msg));
+            player.sendMessage(component);
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onEntityDamage(EntityDamageByEntityEvent event) {
         Entity victimEntity = event.getEntity();
         Entity damagerEntity = event.getDamager();
@@ -131,7 +133,6 @@ public class NewbieProtectionListener implements Listener {
             if (placer != null) {
                 attacker = placer;
             } else if (event.getDamager() instanceof Player crystalBreaker) {
-                // If no placer, but the crystal was broken by a player, treat them as attacker
                 attacker = crystalBreaker;
             }
         }
@@ -144,16 +145,45 @@ public class NewbieProtectionListener implements Listener {
             return;
         }
 
+        // --- CRYSTAL SPECIAL HANDLING ---
+        // If the damager is an EnderCrystal, check if the placer or the player who broke it is protected
+        if (damagerEntity instanceof EnderCrystal) {
+            Player placer = Combat.getInstance().getCrystalManager() != null
+                    ? Combat.getInstance().getCrystalManager().getPlacer(damagerEntity)
+                    : null;
+            Player breaker = (event.getDamager() instanceof Player p) ? p : null;
+
+            // If victim is protected, cancel
+            if (victim != null && isProtected(victim)) {
+                if (attacker != null) sendBlockedMessage(attacker, "AttackerMessage", 0);
+                sendBlockedMessage(victim, "TriedAttackMessage", 0);
+                event.setCancelled(true);
+                return;
+            }
+            // If placer is protected, cancel
+            if (placer != null && isProtected(placer)) {
+                if (victim != null) sendBlockedMessage(victim, "AttackerMessage", 0);
+                if (placer != null) sendBlockedMessage(placer, "TriedAttackMessage", 0);
+                event.setCancelled(true);
+                return;
+            }
+            // If breaker is protected, cancel
+            if (breaker != null && isProtected(breaker)) {
+                sendBlockedMessage(breaker, "TriedAttackMessage", 0);
+                event.setCancelled(true);
+                return;
+            }
+            // Otherwise, continue to normal logic below
+        }
+
         // Block protected player from damaging others with crystals (or any method)
         boolean attackerProtected = attacker != null && isProtected(attacker);
         boolean victimProtected = victim != null && isProtected(victim);
 
         if (attackerProtected) {
-            // Tag both players if possible
             if (attacker != null && victim != null) {
                 Combat.getInstance().setCombat(attacker, victim);
             }
-            // Only notify the protected player, not the victim
             sendBlockedMessage(attacker, "TriedAttackMessage", 0);
             if (attacker != null) {
                 attacker.playSound(attacker.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
@@ -162,11 +192,9 @@ public class NewbieProtectionListener implements Listener {
             return;
         }
         if (victimProtected) {
-            // Tag both players if possible
             if (attacker != null && victim != null) {
                 Combat.getInstance().setCombat(attacker, victim);
             }
-            // Only notify the protected victim and the attacker (if not protected)
             if (attacker != null) {
                 sendBlockedMessage(attacker, "AttackerMessage", 0);
             }
