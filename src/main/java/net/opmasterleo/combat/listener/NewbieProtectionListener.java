@@ -37,7 +37,9 @@ public class NewbieProtectionListener implements Listener {
     private String msgAttacker;
 
     public void reloadConfigCache() {
-        var config = Combat.getInstance().getConfig();
+        Combat combat = Combat.getInstance();
+        if (combat == null) return;
+        var config = combat.getConfig();
         mobsProtect = config.getBoolean("NewbieProtection.settings.MobsProtect", false);
         messageType = config.getString("NewbieProtection.settings.MessageType", "ActionBar");
         msgProtected = config.getString("NewbieProtection.Messages.protectedMessage", "&aYou are protected from PvP for %time% seconds.");
@@ -51,7 +53,7 @@ public class NewbieProtectionListener implements Listener {
         Player player = event.getPlayer();
         Combat combat = Combat.getInstance();
         reloadConfigCache();
-        if (!combat.getConfig().getBoolean("NewbieProtection.enabled", true)) return;
+        if (combat == null || !combat.getConfig().getBoolean("NewbieProtection.enabled", true)) return;
 
         if (!player.hasPlayedBefore()) {
             long protectionSeconds = combat.getConfig().getLong("NewbieProtection.time", 300);
@@ -68,7 +70,7 @@ public class NewbieProtectionListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        UUID uuid = event.getPlayer().getUniqueId();
+        final UUID uuid = event.getPlayer().getUniqueId();
         if (protectionEnd.containsKey(uuid)) {
             long left = protectionEnd.get(uuid) - System.currentTimeMillis();
             if (left > 0) {
@@ -82,8 +84,8 @@ public class NewbieProtectionListener implements Listener {
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
-        Player player = event.getPlayer();
-        UUID uuid = player.getUniqueId();
+        final Player player = event.getPlayer();
+        final UUID uuid = player.getUniqueId();
         if (!player.hasPlayedBefore() && !moveMessageSent.getOrDefault(uuid, true)) {
             Location start = joinLocation.get(uuid);
             Location to = event.getTo();
@@ -98,8 +100,8 @@ public class NewbieProtectionListener implements Listener {
 
     @EventHandler
     public void onPlayerTeleport(PlayerTeleportEvent event) {
-        Player player = event.getPlayer();
-        UUID uuid = player.getUniqueId();
+        final Player player = event.getPlayer();
+        final UUID uuid = player.getUniqueId();
         if (!player.hasPlayedBefore() && !moveMessageSent.getOrDefault(uuid, true)) {
             Location start = joinLocation.get(uuid);
             Location to = event.getTo();
@@ -132,14 +134,15 @@ public class NewbieProtectionListener implements Listener {
 
         if (victim == null && !mobsProtect) return;
 
-        if (victim != null && isProtected(victim)) {
-            if (attacker != null) sendBlockedMessage(attacker, msgAttacker);
-            sendBlockedMessage(victim, msgTriedAttack);
+        if (attacker != null && isProtected(attacker)) {
+            sendBlockedMessage(attacker, msgTriedAttack);
             event.setCancelled(true);
             return;
         }
-        if (attacker != null && isProtected(attacker)) {
-            sendBlockedMessage(attacker, msgTriedAttack);
+
+        if (victim != null && isProtected(victim)) {
+            if (attacker != null) sendBlockedMessage(attacker, msgAttacker);
+            sendBlockedMessage(victim, msgTriedAttack);
             event.setCancelled(true);
         }
     }
@@ -156,7 +159,7 @@ public class NewbieProtectionListener implements Listener {
     }
 
     private void sendMessage(Player player, String msg) {
-        String type = messageType.toLowerCase();
+        String type = messageType != null ? messageType.toLowerCase() : "chat";
         var component = ChatUtil.parse(msg);
         try {
             switch (type) {
