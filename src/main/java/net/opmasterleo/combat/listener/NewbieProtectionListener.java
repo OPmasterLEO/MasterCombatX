@@ -22,6 +22,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.opmasterleo.combat.Combat;
 import net.opmasterleo.combat.manager.PlaceholderManager;
+import net.opmasterleo.combat.util.ChatUtil;
 
 public class NewbieProtectionListener implements Listener {
 
@@ -65,7 +66,7 @@ public class NewbieProtectionListener implements Listener {
 
             String message = PlaceholderManager.applyPlaceholders(player,
                     combat.getConfig().getString("NewbieProtection.protectedMessage"), protectionTime);
-            player.sendMessage(message);
+            player.sendMessage(ChatUtil.parse(message));
         } else if (protectedPlayers.containsKey(player.getUniqueId())) {
             // Resume timer
             protectedPlayers.get(player.getUniqueId()).lastOnlineMillis = System.currentTimeMillis();
@@ -92,7 +93,7 @@ public class NewbieProtectionListener implements Listener {
         String rawMsg = combat.getConfig().getString("NewbieProtection.blockedMessages.messages." + messageKey);
         if (rawMsg == null || rawMsg.isEmpty()) return;
         String msg = PlaceholderManager.applyPlaceholders(player, rawMsg, time);
-        Component component = LegacyComponentSerializer.legacy('&').deserialize(msg);
+        Component component = ChatUtil.parse(msg);
         try {
             switch (type) {
                 case "actionbar":
@@ -221,7 +222,7 @@ public class NewbieProtectionListener implements Listener {
                     it.remove();
                     String msg = combat.getConfig().getString("NewbieProtection.DisabledMessage");
                     if (msg != null && !msg.isEmpty()) {
-                        player.sendMessage(PlaceholderManager.applyPlaceholders(player, msg, 0));
+                        player.sendMessage(ChatUtil.parse(PlaceholderManager.applyPlaceholders(player, msg, 0)));
                     }
                 }
             }
@@ -239,7 +240,7 @@ public class NewbieProtectionListener implements Listener {
             protectedPlayers.remove(player.getUniqueId());
             String msg = Combat.getInstance().getConfig().getString("NewbieProtection.DisabledMessage");
             if (msg != null && !msg.isEmpty()) {
-                player.sendMessage(PlaceholderManager.applyPlaceholders(player, msg, 0));
+                player.sendMessage(ChatUtil.parse(PlaceholderManager.applyPlaceholders(player, msg, 0)));
             }
             return false;
         }
