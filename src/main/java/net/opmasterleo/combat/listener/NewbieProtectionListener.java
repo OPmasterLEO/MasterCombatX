@@ -35,6 +35,13 @@ public class NewbieProtectionListener implements Listener {
     private String msgDisabled;
     private String msgTriedAttack;
     private String msgAttacker;
+    private String msgExpired;
+
+    private EndCrystalListener endCrystalListener;
+
+    public void setEndCrystalListener(EndCrystalListener listener) {
+        this.endCrystalListener = listener;
+    }
 
     public void reloadConfigCache() {
         Combat combat = Combat.getInstance();
@@ -46,6 +53,7 @@ public class NewbieProtectionListener implements Listener {
         msgDisabled = config.getString("NewbieProtection.Messages.DisabledMessage", "&cYou are no longer protected from PvP.");
         msgTriedAttack = config.getString("NewbieProtection.Messages.TriedAttackMessage", "&cYou cannot attack while protected. Use /combat %command% to disable.");
         msgAttacker = config.getString("NewbieProtection.Messages.AttackerMessage", "&cYou cannot attack that user while in protected mode.");
+        msgExpired = config.getString("NewbieProtection.Messages.ExpiredMessage", null);
     }
 
     @EventHandler
@@ -123,10 +131,17 @@ public class NewbieProtectionListener implements Listener {
         Player victim = (victimEntity instanceof Player) ? (Player) victimEntity : null;
         Player attacker = null;
 
-        if (damagerEntity instanceof Player p) attacker = p;
-        else if (damagerEntity instanceof Projectile proj && proj.getShooter() instanceof Player shooter) attacker = shooter;
-        else if (damagerEntity instanceof TNTPrimed tnt && tnt.getSource() instanceof Player tntSource) attacker = tntSource;
-        else if (damagerEntity instanceof EnderCrystal && Combat.getInstance().getCrystalManager() != null) {
+        // Use EndCrystalListener to resolve attacker for crystals if available
+        if (damagerEntity instanceof EnderCrystal && endCrystalListener != null) {
+            attacker = endCrystalListener.resolveCrystalAttacker((EnderCrystal) damagerEntity, event);
+        } else if (damagerEntity instanceof Player p) {
+            attacker = p;
+        } else if (damagerEntity instanceof Projectile proj && proj.getShooter() instanceof Player shooter) {
+            attacker = shooter;
+        } else if (damagerEntity instanceof TNTPrimed tnt && tnt.getSource() instanceof Player tntSource) {
+            attacker = tntSource;
+        } else if (damagerEntity instanceof EnderCrystal && Combat.getInstance().getCrystalManager() != null) {
+            // fallback if EndCrystalListener is not set
             Player placer = Combat.getInstance().getCrystalManager().getPlacer(damagerEntity);
             if (placer != null) attacker = placer;
             else if (damagerEntity instanceof Player crystalBreaker) attacker = crystalBreaker;
@@ -134,19 +149,14 @@ public class NewbieProtectionListener implements Listener {
 
         if (victim == null && !mobsProtect) return;
 
-        if (damagerEntity instanceof EnderCrystal && victim != null && isActuallyProtected(victim)) {
-            if (attacker != null) sendBlockedMessage(attacker, msgAttacker);
-            sendBlockedMessage(victim, msgTriedAttack);
-            event.setCancelled(true);
-            return;
-        }
-
-        if (attacker != null && isActuallyProtected(attacker)) {
+        // Only show messages if a protected player tries to damage another player (not just breaking a crystal)
+        if (attacker != null && isActuallyProtected(attacker) && victim != null) {
             sendBlockedMessage(attacker, msgTriedAttack);
             event.setCancelled(true);
             return;
         }
 
+        // Block damage to protected player (including crystals)
         if (victim != null && isActuallyProtected(victim)) {
             if (attacker != null) sendBlockedMessage(attacker, msgAttacker);
             sendBlockedMessage(victim, msgTriedAttack);
@@ -161,8 +171,12 @@ public class NewbieProtectionListener implements Listener {
         if (left > 0) return true;
         if (protectionEnd.containsKey(player.getUniqueId())) {
             removeProtection(player);
-            if (msgDisabled != null && !msgDisabled.isEmpty()) {
-                sendMessage(player, PlaceholderManager.applyPlaceholders(player, msgDisabled, 0));
+            // Send ExpiredMessage if defined, otherwise fallback to DisabledMessage
+            String msg = (msgExpired != null && !msgExpired.isEmpty()) ? msgExpired : msgDisabled;
+            if (msg != null && !msg.isEmpty()) {
+                // Use the configured protection time for the expired message
+                long protectionTime = Combat.getInstance().getConfig().getLong("NewbieProtection.time", 300);
+                sendMessage(player, PlaceholderManager.applyPlaceholders(player, msg, protectionTime));
             }
         }
         return false;

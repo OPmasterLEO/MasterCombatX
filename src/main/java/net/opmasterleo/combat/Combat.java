@@ -48,6 +48,7 @@ public class Combat extends JavaPlugin implements Listener {
     private WorldGuardUtil worldGuardUtil;
     private PlayerMoveListener playerMoveListener;
     private EndCrystalListener endCrystalListener;
+    private NewbieProtectionListener newbieProtectionListener;
     private CrystalManager crystalManager;
 
     private boolean disableElytra;
@@ -55,8 +56,6 @@ public class Combat extends JavaPlugin implements Listener {
     private long enderPearlDistance;
     private String elytraDisabledMsg;
     private final Set<String> ignoredProjectiles = ConcurrentHashMap.newKeySet();
-
-    private NewbieProtectionListener newbieProtectionListener;
 
     @Override
     @SuppressWarnings("deprecation")
@@ -95,6 +94,8 @@ public class Combat extends JavaPlugin implements Listener {
         crystalManager = new CrystalManager();
 
         newbieProtectionListener = new NewbieProtectionListener();
+        // Inject EndCrystalListener into NewbieProtectionListener
+        newbieProtectionListener.setEndCrystalListener(endCrystalListener);
         Bukkit.getPluginManager().registerEvents(newbieProtectionListener, this);
 
         MasterCombatAPIProvider.register(new MasterCombatAPIBackend(this));

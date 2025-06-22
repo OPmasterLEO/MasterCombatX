@@ -87,6 +87,7 @@ NewbieProtection:
     MessageType: ActionBar # Type of message to show, can be ActionBar, Chat, title, etc.
 
   Messages:
+    ExpiredMessage: "&cYour newbie protection has expired."
     protectedMessage: "&aYou are protected from PvP for %time% seconds."
     DisabledMessage: "&cYou are no longer protected from PvP."
     disableMessage: "&cWarning! &fYou'll be vulnerable to PvP. Use /combat %command% confirm to disable protection."

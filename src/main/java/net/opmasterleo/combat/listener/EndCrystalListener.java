@@ -8,6 +8,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.EnderCrystal;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -108,5 +109,17 @@ public class EndCrystalListener implements Listener {
 
     public void registerCrystalPlacer(Entity crystal, Player placer) {
         Combat.getInstance().getCrystalManager().setPlacer(crystal, placer);
+    }
+
+    /**
+     * Resolves the attacker for a crystal damage event.
+     * Returns the placer if available, otherwise tries to find the breaker.
+     */
+    public Player resolveCrystalAttacker(EnderCrystal crystal, EntityDamageByEntityEvent event) {
+        Player placer = Combat.getInstance().getCrystalManager().getPlacer(crystal);
+        if (placer != null) return placer;
+        Entity damager = event.getDamager();
+        if (damager instanceof Player p) return p;
+        return null;
     }
 }
