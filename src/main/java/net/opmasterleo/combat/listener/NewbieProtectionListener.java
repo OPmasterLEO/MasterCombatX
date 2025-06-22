@@ -15,7 +15,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.EventPriority;
 
 import net.kyori.adventure.text.Component;
@@ -52,6 +54,10 @@ public class NewbieProtectionListener implements Listener {
         blockedMessageType = combat.getConfig().getString("NewbieProtection.blockedMessages.type", "chat").toLowerCase();
     }
 
+    // Track if the player has moved 20 blocks for the first time after joining
+    private final HashMap<UUID, Boolean> firstMoveMessageSent = new HashMap<>();
+    private final HashMap<UUID, org.bukkit.Location> joinLocation = new HashMap<>();
+
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
@@ -62,12 +68,9 @@ public class NewbieProtectionListener implements Listener {
         if (!player.hasPlayedBefore()) {
             long protectionTime = combat.getConfig().getLong("NewbieProtection.time", 300);
             protectedPlayers.put(player.getUniqueId(), new ProtectionData(protectionTime, System.currentTimeMillis()));
-
-            String message = PlaceholderManager.applyPlaceholders(player,
-                    combat.getConfig().getString("NewbieProtection.protectedMessage"), protectionTime);
-            player.sendMessage(ChatUtil.parse(message));
+            joinLocation.put(player.getUniqueId(), player.getLocation().clone());
+            firstMoveMessageSent.put(player.getUniqueId(), false);
         } else if (protectedPlayers.containsKey(player.getUniqueId())) {
-            // Resume timer
             protectedPlayers.get(player.getUniqueId()).lastOnlineMillis = System.currentTimeMillis();
         }
     }
@@ -83,6 +86,58 @@ public class NewbieProtectionListener implements Listener {
                 data.remainingSeconds = Math.max(0, data.remainingSeconds - elapsed);
             }
             data.lastOnlineMillis = now;
+        }
+        joinLocation.remove(player.getUniqueId());
+        firstMoveMessageSent.remove(player.getUniqueId());
+    }
+
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+        if (!player.hasPlayedBefore()) {
+            // Only for first join
+            if (!firstMoveMessageSent.getOrDefault(uuid, true)) {
+                org.bukkit.Location start = joinLocation.get(uuid);
+                org.bukkit.Location to = event.getTo();
+                if (start != null && to != null && start.getWorld().equals(to.getWorld())) {
+                    double distance = start.distance(to);
+                    if (distance >= 20.0) {
+                        Combat combat = Combat.getInstance();
+                        long protectionTime = combat.getConfig().getLong("NewbieProtection.time", 300);
+                        String message = PlaceholderManager.applyPlaceholders(player,
+                                combat.getConfig().getString("NewbieProtection.protectedMessage"), protectionTime);
+                        player.sendMessage(ChatUtil.parse(message));
+                        firstMoveMessageSent.put(uuid, true);
+                    }
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerTeleport(PlayerTeleportEvent event) {
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+        if (!player.hasPlayedBefore()) {
+            // Only for first join
+            if (!firstMoveMessageSent.getOrDefault(uuid, true)) {
+                org.bukkit.Location start = joinLocation.get(uuid);
+                org.bukkit.Location to = event.getTo();
+                if (start != null && to != null) {
+                    // If world changed, treat as "moved" (always send message)
+                    boolean worldChanged = !start.getWorld().equals(to.getWorld());
+                    double distance = worldChanged ? 21.0 : start.distance(to); // force trigger if world changed
+                    if (distance >= 20.0) {
+                        Combat combat = Combat.getInstance();
+                        long protectionTime = combat.getConfig().getLong("NewbieProtection.time", 300);
+                        String message = PlaceholderManager.applyPlaceholders(player,
+                                combat.getConfig().getString("NewbieProtection.protectedMessage"), protectionTime);
+                        player.sendMessage(ChatUtil.parse(message));
+                        firstMoveMessageSent.put(uuid, true);
+                    }
+                }
+            }
         }
     }
 
