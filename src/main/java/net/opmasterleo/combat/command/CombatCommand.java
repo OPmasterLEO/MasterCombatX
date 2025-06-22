@@ -39,7 +39,6 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
 
         switch (args[0].toLowerCase()) {
             case "removeprotect":
-            default:
                 if (args[0].equalsIgnoreCase(removeProtectCommand)) {
                     if (!protectionListener.isActuallyProtected(player)) {
                         player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
