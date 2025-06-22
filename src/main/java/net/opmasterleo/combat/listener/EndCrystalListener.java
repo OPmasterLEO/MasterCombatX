@@ -111,10 +111,6 @@ public class EndCrystalListener implements Listener {
         Combat.getInstance().getCrystalManager().setPlacer(crystal, placer);
     }
 
-    /**
-     * Resolves the attacker for a crystal damage event.
-     * Returns the placer if available, otherwise tries to find the breaker.
-     */
     public Player resolveCrystalAttacker(EnderCrystal crystal, EntityDamageByEntityEvent event) {
         Player placer = Combat.getInstance().getCrystalManager().getPlacer(crystal);
         if (placer != null) return placer;

@@ -94,7 +94,6 @@ public class Combat extends JavaPlugin implements Listener {
         crystalManager = new CrystalManager();
 
         newbieProtectionListener = new NewbieProtectionListener();
-        // Inject EndCrystalListener into NewbieProtectionListener
         newbieProtectionListener.setEndCrystalListener(endCrystalListener);
         Bukkit.getPluginManager().registerEvents(newbieProtectionListener, this);
 
@@ -252,10 +251,8 @@ public class Combat extends JavaPlugin implements Listener {
     }
 
     public void setCombat(Player player, Player opponent) {
-        // Hook: Prevent combat tagging if either player is protected by NewbieProtection
         NewbieProtectionListener protection = getNewbieProtectionListener();
         if (protection != null) {
-            // Use isActuallyProtected instead of isProtected
             if ((player != null && protection.isActuallyProtected(player)) || (opponent != null && protection.isActuallyProtected(opponent))) {
                 return;
             }

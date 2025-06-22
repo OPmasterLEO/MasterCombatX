@@ -131,7 +131,6 @@ public class NewbieProtectionListener implements Listener {
         Player victim = (victimEntity instanceof Player) ? (Player) victimEntity : null;
         Player attacker = null;
 
-        // Use EndCrystalListener to resolve attacker for crystals if available
         if (damagerEntity instanceof EnderCrystal && endCrystalListener != null) {
             attacker = endCrystalListener.resolveCrystalAttacker((EnderCrystal) damagerEntity, event);
         } else if (damagerEntity instanceof Player p) {
@@ -149,14 +148,12 @@ public class NewbieProtectionListener implements Listener {
 
         if (victim == null && !mobsProtect) return;
 
-        // Only show messages if a protected player tries to damage another player (not just breaking a crystal)
         if (attacker != null && isActuallyProtected(attacker) && victim != null) {
             sendBlockedMessage(attacker, msgTriedAttack);
             event.setCancelled(true);
             return;
         }
 
-        // Block damage to protected player (including crystals)
         if (victim != null && isActuallyProtected(victim)) {
             if (attacker != null) sendBlockedMessage(attacker, msgAttacker);
             sendBlockedMessage(victim, msgTriedAttack);
@@ -171,10 +168,8 @@ public class NewbieProtectionListener implements Listener {
         if (left > 0) return true;
         if (protectionEnd.containsKey(player.getUniqueId())) {
             removeProtection(player);
-            // Send ExpiredMessage if defined, otherwise fallback to DisabledMessage
             String msg = (msgExpired != null && !msgExpired.isEmpty()) ? msgExpired : msgDisabled;
             if (msg != null && !msg.isEmpty()) {
-                // Use the configured protection time for the expired message
                 long protectionTime = Combat.getInstance().getConfig().getLong("NewbieProtection.time", 300);
                 sendMessage(player, PlaceholderManager.applyPlaceholders(player, msg, protectionTime));
             }

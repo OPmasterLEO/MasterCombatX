@@ -30,22 +30,26 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
 
         Combat combat = Combat.getInstance();
         NewbieProtectionListener protectionListener = combat.getNewbieProtectionListener();
+        String removeProtectCommand = combat.getConfig().getString("NewbieProtection.settings.disableCommand", "removeprotect").toLowerCase();
 
         if (args.length == 0) {
-            sendHelp(sender);
+            sendHelp(sender, removeProtectCommand);
             return true;
         }
 
         switch (args[0].toLowerCase()) {
             case "removeprotect":
-                // Use isActuallyProtected instead of isProtected
-                if (!protectionListener.isActuallyProtected(player)) {
-                    player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
+            default:
+                if (args[0].equalsIgnoreCase(removeProtectCommand)) {
+                    if (!protectionListener.isActuallyProtected(player)) {
+                        player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
+                        return true;
+                    }
+                    String disableMessage = PlaceholderManager.applyPlaceholders(player,
+                            combat.getConfig().getString("NewbieProtection.disableMessage"), 0);
+                    player.sendMessage(Component.text(disableMessage));
                     return true;
                 }
-                String disableMessage = PlaceholderManager.applyPlaceholders(player,
-                        combat.getConfig().getString("NewbieProtection.disableMessage"), 0);
-                player.sendMessage(Component.text(disableMessage));
                 break;
 
             case "confirm":
@@ -104,7 +108,7 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
                 break;
 
             default:
-                sendHelp(sender);
+                sendHelp(sender, removeProtectCommand);
         }
         return true;
     }
@@ -113,12 +117,13 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
         return version.replaceAll("[^0-9.]", "");
     }
 
-    private void sendHelp(CommandSender sender) {
+    private void sendHelp(CommandSender sender, String removeProtectCommand) {
         sender.sendMessage(Component.text("Usage:").color(NamedTextColor.RED));
         sender.sendMessage(Component.text("/combat reload").color(NamedTextColor.GRAY));
         sender.sendMessage(Component.text("/combat toggle").color(NamedTextColor.GRAY));
         sender.sendMessage(Component.text("/combat update").color(NamedTextColor.GRAY));
         sender.sendMessage(Component.text("/combat api").color(NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("/combat " + removeProtectCommand).color(NamedTextColor.GRAY));
     }
 
     @Override

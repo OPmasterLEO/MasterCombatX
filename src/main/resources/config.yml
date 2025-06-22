@@ -83,7 +83,7 @@ NewbieProtection:
 
   settings:
     MobsProtect: false # Protects players from mobs during newbie protection
-    disableCommand: /combat removeprotect
+    disableCommand: "removeprotect"
     MessageType: ActionBar # Type of message to show, can be ActionBar, Chat, title, etc.
 
   Messages:
