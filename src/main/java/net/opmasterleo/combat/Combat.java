@@ -254,7 +254,8 @@ public class Combat extends JavaPlugin implements Listener {
         // Hook: Prevent combat tagging if either player is protected by NewbieProtection
         NewbieProtectionListener protection = getNewbieProtectionListener();
         if (protection != null) {
-            if ((player != null && protection.isProtected(player)) || (opponent != null && protection.isProtected(opponent))) {
+            // Use isActuallyProtected instead of isProtected
+            if ((player != null && protection.isActuallyProtected(player)) || (opponent != null && protection.isActuallyProtected(opponent))) {
                 return;
             }
         }
