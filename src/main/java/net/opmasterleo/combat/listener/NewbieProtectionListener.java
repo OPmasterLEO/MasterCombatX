@@ -131,9 +131,7 @@ public class NewbieProtectionListener implements Listener {
         Player victim = (victimEntity instanceof Player) ? (Player) victimEntity : null;
         Player attacker = null;
 
-        // Always resolve crystal attacker using EndCrystalListener if available
         if (damagerEntity instanceof EnderCrystal && endCrystalListener != null) {
-            // Use EndCrystalListener to resolve the correct attacker for crystals
             attacker = endCrystalListener.resolveCrystalAttacker((EnderCrystal) damagerEntity, event);
         } else if (damagerEntity instanceof Player p) {
             attacker = p;
@@ -142,22 +140,17 @@ public class NewbieProtectionListener implements Listener {
         } else if (damagerEntity instanceof TNTPrimed tnt && tnt.getSource() instanceof Player tntSource) {
             attacker = tntSource;
         } else if (damagerEntity instanceof EnderCrystal && Combat.getInstance().getCrystalManager() != null) {
-            // fallback if EndCrystalListener is not set
             Player placer = Combat.getInstance().getCrystalManager().getPlacer(damagerEntity);
             if (placer != null) attacker = placer;
         }
 
         if (victim == null && !mobsProtect) return;
 
-        // --- CRYSTAL & ALL DAMAGE HANDLING ---
-        // Block protected player from damaging others (any method, including crystals)
-        if (attacker != null && isActuallyProtected(attacker) && victim != null) {
-            sendBlockedMessage(attacker, msgTriedAttack);
+        if (attacker != null && isActuallyProtected(attacker) && victim != null && !attacker.getUniqueId().equals(victim.getUniqueId())) {
             event.setCancelled(true);
+            sendBlockedMessage(attacker, msgTriedAttack);
             return;
         }
-
-        // Block damage to protected player, but only show message to attacker (not to victim)
         if (victim != null && isActuallyProtected(victim)) {
             if (attacker != null) sendBlockedMessage(attacker, msgAttacker);
             event.setCancelled(true);
