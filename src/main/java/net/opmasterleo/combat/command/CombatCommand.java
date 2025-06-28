@@ -32,84 +32,108 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
         NewbieProtectionListener protectionListener = combat.getNewbieProtectionListener();
         String removeProtectCommand = combat.getConfig().getString("NewbieProtection.settings.disableCommand", "removeprotect").toLowerCase();
 
-        if (args.length == 0) {
-            sendHelp(sender, removeProtectCommand);
+        // Handle /protection and /removeprotect as independent commands
+        String cmdLabel = label.toLowerCase();
+        if (cmdLabel.equals("protection")) {
+            if (protectionListener.isActuallyProtected(player)) {
+                protectionListener.sendProtectionLeft(player);
+            } else {
+                player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
+            }
+            return true;
+        }
+        if (cmdLabel.equals(removeProtectCommand)) {
+            if (!protectionListener.isActuallyProtected(player)) {
+                player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
+                return true;
+            }
+            String disableMessage = PlaceholderManager.applyPlaceholders(player,
+                    combat.getConfig().getString("NewbieProtection.disableMessage"), 0);
+            player.sendMessage(Component.text(disableMessage));
             return true;
         }
 
-        switch (args[0].toLowerCase()) {
-            case "removeprotect":
-                if (args[0].equalsIgnoreCase(removeProtectCommand)) {
-                    if (!protectionListener.isActuallyProtected(player)) {
-                        player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
+        if (cmdLabel.equals("combat")) {
+            if (args.length == 0) {
+                sendHelp(sender, removeProtectCommand);
+                return true;
+            }
+            switch (args[0].toLowerCase()) {
+                case "removeprotect":
+                    if (args[0].equalsIgnoreCase(removeProtectCommand)) {
+                        if (!protectionListener.isActuallyProtected(player)) {
+                            player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
+                            return true;
+                        }
+                        String disableMessage = PlaceholderManager.applyPlaceholders(player,
+                                combat.getConfig().getString("NewbieProtection.disableMessage"), 0);
+                        player.sendMessage(Component.text(disableMessage));
                         return true;
                     }
-                    String disableMessage = PlaceholderManager.applyPlaceholders(player,
-                            combat.getConfig().getString("NewbieProtection.disableMessage"), 0);
-                    player.sendMessage(Component.text(disableMessage));
-                    return true;
-                }
-                break;
-
-            case "confirm":
-                protectionListener.removeProtection(player);
-                player.sendMessage(Component.text("PvP protection disabled. You are now vulnerable.").color(NamedTextColor.YELLOW));
-                break;
-
-            case "reload":
-                Combat.getInstance().reloadCombatConfig();
-                sender.sendMessage(Component.text("Config reloaded!").color(NamedTextColor.GREEN));
-                break;
-
-            case "toggle":
-                Combat combatInstance = Combat.getInstance();
-                combatInstance.setCombatEnabled(!combatInstance.isCombatEnabled());
-                String status = combatInstance.isCombatEnabled() ? "enabled" : "disabled";
-                NamedTextColor statusColor = combatInstance.isCombatEnabled() ? NamedTextColor.GREEN : NamedTextColor.RED;
-                sender.sendMessage(Component.text("Combat has been ").color(NamedTextColor.YELLOW)
-                        .append(Component.text(status).color(statusColor))
-                        .append(Component.text(".").color(NamedTextColor.YELLOW)));
-                break;
-
-            case "update":
-                if (updateCheckInProgress) {
-                    sender.sendMessage(Component.text("Update check is already in progress. Please wait...").color(NamedTextColor.YELLOW));
                     break;
-                }
-                updateCheckInProgress = true;
-                sender.sendMessage(Component.text("Checking for updates...").color(NamedTextColor.YELLOW));
-                Combat plugin = Combat.getInstance();
-                Update.checkForUpdates(plugin);
-                plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                    @SuppressWarnings("deprecation")
-                    String currentVersion = plugin.getDescription().getVersion();
-                    String latestVersion = Update.getLatestVersion();
-                    updateCheckInProgress = false;
-                    if (latestVersion == null) {
-                        sender.sendMessage(Component.text("Could not fetch update information.").color(NamedTextColor.RED));
-                        return;
+                case "confirm":
+                    protectionListener.removeProtection(player);
+                    player.sendMessage(Component.text("PvP protection disabled. You are now vulnerable.").color(NamedTextColor.YELLOW));
+                    break;
+                case "reload":
+                    Combat.getInstance().reloadCombatConfig();
+                    sender.sendMessage(Component.text("Config reloaded!").color(NamedTextColor.GREEN));
+                    break;
+                case "toggle":
+                    Combat combatInstance = Combat.getInstance();
+                    combatInstance.setCombatEnabled(!combatInstance.isCombatEnabled());
+                    String status = combatInstance.isCombatEnabled() ? "enabled" : "disabled";
+                    NamedTextColor statusColor = combatInstance.isCombatEnabled() ? NamedTextColor.GREEN : NamedTextColor.RED;
+                    sender.sendMessage(Component.text("Combat has been ").color(NamedTextColor.YELLOW)
+                            .append(Component.text(status).color(statusColor))
+                            .append(Component.text(".").color(NamedTextColor.YELLOW)));
+                    break;
+                case "update":
+                    if (updateCheckInProgress) {
+                        sender.sendMessage(Component.text("Update check is already in progress. Please wait...").color(NamedTextColor.YELLOW));
+                        break;
                     }
-                    if (normalizeVersion(currentVersion).equalsIgnoreCase(normalizeVersion(latestVersion))) {
-                        sender.sendMessage(Component.text("You already have the latest version (" + currentVersion + ").").color(NamedTextColor.GREEN));
-                        return;
+                    updateCheckInProgress = true;
+                    sender.sendMessage(Component.text("Checking for updates...").color(NamedTextColor.YELLOW));
+                    Combat plugin = Combat.getInstance();
+                    Update.checkForUpdates(plugin);
+                    plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                        @SuppressWarnings("deprecation")
+                        String currentVersion = plugin.getDescription().getVersion();
+                        String latestVersion = Update.getLatestVersion();
+                        updateCheckInProgress = false;
+                        if (latestVersion == null) {
+                            sender.sendMessage(Component.text("Could not fetch update information.").color(NamedTextColor.RED));
+                            return;
+                        }
+                        if (normalizeVersion(currentVersion).equalsIgnoreCase(normalizeVersion(latestVersion))) {
+                            sender.sendMessage(Component.text("You already have the latest version (" + currentVersion + ").").color(NamedTextColor.GREEN));
+                            return;
+                        }
+                        sender.sendMessage(Component.text("Downloading and applying the update (if available)...").color(NamedTextColor.YELLOW));
+                        Update.downloadAndReplaceJar(plugin);
+                    }, 40L);
+                    break;
+                case "api":
+                    if (MasterCombatAPIProvider.getAPI() != null) {
+                        sender.sendMessage(Component.text("MasterCombatAPI is loaded and available.").color(NamedTextColor.GREEN));
+                    } else {
+                        sender.sendMessage(Component.text("MasterCombatAPI is not available.").color(NamedTextColor.RED));
                     }
-                    sender.sendMessage(Component.text("Downloading and applying the update (if available)...").color(NamedTextColor.YELLOW));
-                    Update.downloadAndReplaceJar(plugin);
-                }, 40L);
-                break;
-
-            case "api":
-                if (MasterCombatAPIProvider.getAPI() != null) {
-                    sender.sendMessage(Component.text("MasterCombatAPI is loaded and available.").color(NamedTextColor.GREEN));
-                } else {
-                    sender.sendMessage(Component.text("MasterCombatAPI is not available.").color(NamedTextColor.RED));
-                }
-                break;
-
-            default:
-                sendHelp(sender, removeProtectCommand);
+                    break;
+                case "protection":
+                    if (protectionListener.isActuallyProtected(player)) {
+                        protectionListener.sendProtectionLeft(player);
+                    } else {
+                        player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
+                    }
+                    return true;
+                default:
+                    sendHelp(sender, removeProtectCommand);
+            }
+            return true;
         }
-        return true;
+        return false;
     }
 
     private String normalizeVersion(String version) {
@@ -123,6 +147,7 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("/combat update").color(NamedTextColor.GRAY));
         sender.sendMessage(Component.text("/combat api").color(NamedTextColor.GRAY));
         sender.sendMessage(Component.text("/combat " + removeProtectCommand).color(NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("/combat protection").color(NamedTextColor.GRAY)); // add help for /protection
     }
 
     @Override
@@ -141,6 +166,9 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
             }
             if ("api".startsWith(args[0].toLowerCase())) {
                 completions.add("api");
+            }
+            if ("protection".startsWith(args[0].toLowerCase())) {
+                completions.add("protection");
             }
         }
 

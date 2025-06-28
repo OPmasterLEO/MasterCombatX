@@ -52,10 +52,10 @@ public class NewbieProtectionListener implements Listener {
         messageType = config.getString("NewbieProtection.settings.MessageType", "ActionBar");
         msgProtected = config.getString("NewbieProtection.Messages.protectedMessage", "&aYou are protected from PvP for %time% seconds.");
         msgDisabled = config.getString("NewbieProtection.Messages.DisabledMessage", "&cYou are no longer protected from PvP.");
-        msgTriedAttack = config.getString("NewbieProtection.Messages.TriedAttackMessage", "&cYou cannot attack while protected. Use /combat %command% to disable.");
+        msgTriedAttack = config.getString("NewbieProtection.Messages.TriedAttackMessage", "&cYou cannot attack while protected. Use /%command% to disable.");
         msgAttacker = config.getString("NewbieProtection.Messages.AttackerMessage", "&cYou cannot attack that user while in protected mode.");
         msgExpired = config.getString("NewbieProtection.Messages.ExpiredMessage", null);
-        msgCrystalBlock = config.getString("NewbieProtection.Messages.CrystalBlockMessage", "&cYou cannot attack unprotected players with crystals while protected."); // add this
+        msgCrystalBlock = config.getString("NewbieProtection.Messages.CrystalBlockMessage", "&cYou cannot attack unprotected players with crystals while protected.");
     }
 
     public String getCrystalBlockMessage() {
@@ -177,29 +177,36 @@ public class NewbieProtectionListener implements Listener {
             String msg = (msgExpired != null && !msgExpired.isEmpty()) ? msgExpired : msgDisabled;
             if (msg != null && !msg.isEmpty()) {
                 long protectionTime = Combat.getInstance().getConfig().getLong("NewbieProtection.time", 300);
-                sendMessage(player, PlaceholderManager.applyPlaceholders(player, msg, protectionTime));
+                sendMessage(player, PlaceholderManager.applyPlaceholders(player, msg, protectionTime), "chat");
+                sendMessage(player, PlaceholderManager.applyPlaceholders(player, msg, protectionTime), "actionbar");
             }
         }
         return false;
     }
 
+    // Sends only chat for protected message
     private void sendProtectedMessage(Player player) {
         long left = getProtectionLeft(player);
         String msg = PlaceholderManager.applyPlaceholders(player, msgProtected, left / 1000);
-        sendMessage(player, msg);
+        sendMessage(player, msg, "chat");
     }
 
-    // Change from private to public
-    public void sendBlockedMessage(Player player, String rawMsg) {
-        String msg = PlaceholderManager.applyPlaceholders(player, rawMsg, getProtectionLeft(player) / 1000);
-        sendMessage(player, msg);
+    // For /protection command: sends message in configured type
+    public void sendProtectionLeft(Player player) {
+        long left = getProtectionLeft(player);
+        String msg = PlaceholderManager.applyPlaceholders(player,
+            Combat.getInstance().getConfig().getString("NewbieProtection.Messages.ProtectionLeftMessage", "&aProtection Left: %time%"),
+            left / 1000);
+        sendMessage(player, msg, messageType);
     }
 
-    private void sendMessage(Player player, String msg) {
-        String type = messageType != null ? messageType.toLowerCase() : "chat";
+    // Overload to allow explicit type
+    private void sendMessage(Player player, String msg, String type) {
+        if (msg == null || msg.isEmpty()) return;
+        String lowerType = type != null ? type.toLowerCase() : "chat";
         var component = ChatUtil.parse(msg);
         try {
-            switch (type) {
+            switch (lowerType) {
                 case "actionbar": player.sendActionBar(component); break;
                 case "title": player.showTitle(net.kyori.adventure.title.Title.title(net.kyori.adventure.text.Component.empty(), component)); break;
                 case "subtitle": player.showTitle(net.kyori.adventure.title.Title.title(net.kyori.adventure.text.Component.text(""), component)); break;
@@ -222,6 +229,9 @@ public class NewbieProtectionListener implements Listener {
         Long end = protectionEnd.get(player.getUniqueId());
         if (end == null) return 0;
         long left = end - System.currentTimeMillis();
+        return Math.max(left, 0);
+    }
+}
         return Math.max(left, 0);
     }
 }

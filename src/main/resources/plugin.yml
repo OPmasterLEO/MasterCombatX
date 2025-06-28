@@ -16,3 +16,13 @@ commands:
     usage: /combat <toggle|reload|update>
     permission: combat.admin
     permission-message: You do not have permission to use this command.
+  protection:
+    description: Check your PvP protection time left.
+    usage: /protection
+    permission: combat.protection
+    permission-message: You do not have permission to use this command.
+  removeprotect:
+    description: Disable your newbie PvP protection.
+    usage: /removeprotect
+    permission: combat.protection
+    permission-message: You do not have permission to use this command.

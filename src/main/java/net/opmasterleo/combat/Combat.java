@@ -66,9 +66,16 @@ public class Combat extends JavaPlugin implements Listener {
         combatEnabled = getConfig().getBoolean("combat-enabled", true);
         glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
 
+        // Register main and protection commands
+        getCommand("combat").setExecutor(new CombatCommand());
+        getCommand("protection").setExecutor(new CombatCommand());
+        String disableCmd = getConfig().getString("NewbieProtection.settings.disableCommand", "removeprotect").toLowerCase();
+        if (getCommand(disableCmd) != null) {
+            getCommand(disableCmd).setExecutor(new CombatCommand());
+        }
+
         if (!glowingEnabled) {
             registerListeners();
-            getCommand("combat").setExecutor(new CombatCommand());
             startCombatTimer();
             sendStartupMessage();
             Update.checkForUpdates(this);
@@ -94,7 +101,6 @@ public class Combat extends JavaPlugin implements Listener {
         }
 
         registerListeners();
-        getCommand("combat").setExecutor(new CombatCommand());
         startCombatTimer();
         sendStartupMessage();
         Update.checkForUpdates(this);
