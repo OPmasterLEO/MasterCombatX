@@ -15,6 +15,7 @@ public class PlayerDeathListener implements Listener {
 
         if (combat.getConfig().getBoolean("untag-on-death", true)) {
             combat.getCombatPlayers().remove(deadPlayer.getUniqueId());
+            combat.removeCombatGlowing(deadPlayer);
         }
 
         if (combat.getConfig().getBoolean("untag-on-enemy-death", true)) {
@@ -22,6 +23,7 @@ public class PlayerDeathListener implements Listener {
             if (opponent != null) {
                 combat.getCombatPlayers().remove(opponent.getUniqueId());
                 combat.getCombatOpponents().remove(opponent.getUniqueId());
+                combat.removeCombatGlowing(opponent);
             }
         } else {
             Player opponent = combat.getCombatOpponent(deadPlayer);
@@ -29,5 +31,6 @@ public class PlayerDeathListener implements Listener {
                 combat.getCombatPlayers().remove(deadPlayer.getUniqueId());
             }
         }
+        combat.removeCombatGlowing(deadPlayer);
     }
 }

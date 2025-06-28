@@ -33,5 +33,10 @@ public class PlayerQuitListener implements Listener {
         }
 
         Combat.getInstance().getCombatPlayers().remove(player.getUniqueId());
+        Combat.getInstance().removeCombatGlowing(player);
+        Player opponent = Combat.getInstance().getCombatOpponent(player);
+        if (opponent != null) {
+            Combat.getInstance().removeCombatGlowing(opponent);
+        }
     }
 }

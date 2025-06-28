@@ -66,14 +66,31 @@ public class Combat extends JavaPlugin implements Listener {
         combatEnabled = getConfig().getBoolean("combat-enabled", true);
         glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
 
-        if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
-            worldGuardUtil = new WorldGuardUtil();
-        }
+        if (!glowingEnabled) {
+            registerListeners();
+            getCommand("combat").setExecutor(new CombatCommand());
+            startCombatTimer();
+            sendStartupMessage();
+            Update.checkForUpdates(this);
+            Update.notifyOnServerOnline(this);
 
-        if (Bukkit.getPluginManager().getPlugin("ProtocolLib") != null) {
-            Bukkit.getConsoleSender().sendMessage("§a[MasterCombat] ProtocolLib detected and integrated.");
-        } else {
-            Bukkit.getConsoleSender().sendMessage("§c[MasterCombat] ProtocolLib not detected. Some features may not work.");
+            int pluginId = 25701;
+            @SuppressWarnings("unused")
+            Metrics metrics = new Metrics(this, pluginId);
+
+            endCrystalListener = new EndCrystalListener();
+            Bukkit.getPluginManager().registerEvents(endCrystalListener, this);
+            Bukkit.getPluginManager().registerEvents(new EntityPlaceListener(), this);
+
+            crystalManager = new CrystalManager();
+
+            newbieProtectionListener = new NewbieProtectionListener();
+            newbieProtectionListener.setEndCrystalListener(endCrystalListener);
+            Bukkit.getPluginManager().registerEvents(newbieProtectionListener, this);
+
+            MasterCombatAPIProvider.register(new MasterCombatAPIBackend(this));
+            Bukkit.getPluginManager().callEvent(new MasterCombatLoadEvent());
+            return;
         }
 
         registerListeners();
@@ -103,15 +120,14 @@ public class Combat extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        if (glowingEnabled) {
+            for (UUID uuid : combatPlayers.keySet()) {
+                removeCombatGlowing(uuid);
+            }
+        }
         combatPlayers.clear();
         combatOpponents.clear();
         lastActionBarSeconds.clear();
-        if (glowingEnabled) {
-            for (UUID uuid : combatPlayers.keySet()) {
-                Player player = Bukkit.getPlayer(uuid);
-                if (player != null) player.setGlowing(false);
-            }
-        }
         Bukkit.getConsoleSender().sendMessage("§cMasterCombat plugin has been disabled.");
     }
 
@@ -200,7 +216,27 @@ public class Combat extends JavaPlugin implements Listener {
         return 60L;
     }
 
+    /**
+     * Remove glowing from a player by UUID, if glowing is enabled.
+     */
+    public void removeCombatGlowing(UUID uuid) {
+        if (!glowingEnabled) return;
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null && player.isOnline() && player.isGlowing()) {
+            player.setGlowing(false);
+        }
+    }
+
+    /**
+     * Remove glowing from a player instance, if glowing is enabled.
+     */
+    public void removeCombatGlowing(Player player) {
+        if (!glowingEnabled || player == null || !player.isOnline()) return;
+        if (player.isGlowing()) player.setGlowing(false);
+    }
+
     private void setPlayerGlowing(UUID uuid, boolean glowing) {
+        if (!glowingEnabled) return;
         Player player = Bukkit.getPlayer(uuid);
         if (player != null && player.isOnline() && player.isGlowing() != glowing) {
             player.setGlowing(glowing);
@@ -213,9 +249,9 @@ public class Combat extends JavaPlugin implements Listener {
         UUID opponentUUID = combatOpponents.remove(playerUUID);
         if (opponentUUID != null) {
             combatOpponents.remove(opponentUUID);
-            if (glowingEnabled) setPlayerGlowing(opponentUUID, false);
+            if (glowingEnabled) removeCombatGlowing(opponentUUID);
         }
-        if (glowingEnabled) setPlayerGlowing(playerUUID, false);
+        if (glowingEnabled) removeCombatGlowing(playerUUID);
         sendCombatEndMessage(player);
     }
 
@@ -267,7 +303,7 @@ public class Combat extends JavaPlugin implements Listener {
         updateCombatState(player, opponent, duration);
         sendCombatStartMessage(player);
         restrictMovement(player);
-        setPlayerGlowingIfNeeded(player.getUniqueId(), true);
+        if (glowingEnabled) setPlayerGlowingIfNeeded(player.getUniqueId(), true);
         if (glowingEnabled && opponent != null) setPlayerGlowingIfNeeded(opponent.getUniqueId(), true);
     }
 
@@ -323,12 +359,12 @@ public class Combat extends JavaPlugin implements Listener {
     public void reloadCombatConfig() {
         reloadConfig();
         combatEnabled = getConfig().getBoolean("combat-enabled", true);
+        glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
         enableWorldsEnabled = getConfig().getBoolean("EnabledWorlds.enabled", false);
         enabledWorlds = getConfig().getStringList("EnabledWorlds.worlds");
         if (enabledWorlds == null || enabledWorlds.isEmpty()) {
             enabledWorlds = List.of("world");
         }
-        glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
 
         disableElytra = getConfig().getBoolean("disable-elytra", false);
         enderPearlEnabled = getConfig().getBoolean("EnderPearl.Enabled", false);
@@ -343,7 +379,7 @@ public class Combat extends JavaPlugin implements Listener {
 
         if (!glowingEnabled) {
             for (UUID uuid : combatPlayers.keySet()) {
-                setPlayerGlowing(uuid, false);
+                removeCombatGlowing(uuid);
             }
         }
     }

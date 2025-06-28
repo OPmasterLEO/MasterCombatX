@@ -28,5 +28,6 @@ public class MasterCombatAPIBackend implements MasterCombatAPI {
     public void untagPlayer(UUID uuid) {
         plugin.getCombatPlayers().remove(uuid);
         plugin.getCombatOpponents().remove(uuid);
+        plugin.removeCombatGlowing(uuid);
     }
 }
