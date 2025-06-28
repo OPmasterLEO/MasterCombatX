@@ -93,6 +93,7 @@ NewbieProtection:
     disableMessage: "&cWarning! &fYou'll be vulnerable to PvP. Use /combat %command% confirm to disable protection."
     TriedAttackMessage: "&cYou cannot attack while protected. Use /combat %command% to disable."
     AttackerMessage: "&cYou cannot attack that user while in protected mode."
+    CrystalBlockMessage: "&cYou cannot attack unprotected players with crystals while protected."
 
 # Should MasterCombat tag players when they damage themselves?
 # Default: false

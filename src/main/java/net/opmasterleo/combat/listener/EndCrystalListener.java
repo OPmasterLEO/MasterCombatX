@@ -22,6 +22,7 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 
 import net.opmasterleo.combat.Combat;
+import net.opmasterleo.combat.listener.NewbieProtectionListener;
 
 public class EndCrystalListener implements Listener {
     private final ProtocolManager protocolManager;
@@ -36,13 +37,32 @@ public class EndCrystalListener implements Listener {
             @Override
             public void onPacketReceiving(PacketEvent event) {
                 if (event.getPacketType() == PacketType.Play.Client.USE_ENTITY) {
-                    Bukkit.getScheduler().runTask(Combat.getInstance(), () -> {
-                        Entity entity = event.getPacket().getEntityModifier(event).read(0);
-                        if (entity != null && entity.getType() == EntityType.END_CRYSTAL) {
-                            Player player = event.getPlayer();
-                            Combat.getInstance().registerCrystalPlacer(entity, player);
+                    Entity entity = event.getPacket().getEntityModifier(event).read(0);
+                    if (entity != null && entity.getType() == EntityType.END_CRYSTAL) {
+                        Player player = event.getPlayer();
+                        // --- Newbie protection check ---
+                        Combat combat = Combat.getInstance();
+                        NewbieProtectionListener protection = combat.getNewbieProtectionListener();
+                        if (protection != null) {
+                            // Find all nearby players (potential targets)
+                            for (Entity nearby : entity.getNearbyEntities(4.0, 4.0, 4.0)) {
+                                if (nearby instanceof Player target) {
+                                    boolean attackerProtected = protection.isActuallyProtected(player);
+                                    boolean targetProtected = protection.isActuallyProtected(target);
+                                    if (attackerProtected && !targetProtected && !player.getUniqueId().equals(target.getUniqueId())) {
+                                        // Block the attack
+                                        event.setCancelled(true);
+                                        protection.sendBlockedMessage(player, protection.getCrystalBlockMessage());
+                                        return;
+                                    }
+                                }
+                            }
                         }
-                    });
+                        // Register placer as usual
+                        Bukkit.getScheduler().runTask(Combat.getInstance(), () -> {
+                            Combat.getInstance().registerCrystalPlacer(entity, player);
+                        });
+                    }
                 }
             }
         });

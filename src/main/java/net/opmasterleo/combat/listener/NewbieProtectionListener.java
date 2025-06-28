@@ -36,6 +36,7 @@ public class NewbieProtectionListener implements Listener {
     private String msgTriedAttack;
     private String msgAttacker;
     private String msgExpired;
+    private String msgCrystalBlock; // add this
 
     private EndCrystalListener endCrystalListener;
 
@@ -54,6 +55,14 @@ public class NewbieProtectionListener implements Listener {
         msgTriedAttack = config.getString("NewbieProtection.Messages.TriedAttackMessage", "&cYou cannot attack while protected. Use /combat %command% to disable.");
         msgAttacker = config.getString("NewbieProtection.Messages.AttackerMessage", "&cYou cannot attack that user while in protected mode.");
         msgExpired = config.getString("NewbieProtection.Messages.ExpiredMessage", null);
+        msgCrystalBlock = config.getString("NewbieProtection.Messages.CrystalBlockMessage", "&cYou cannot attack unprotected players with crystals while protected."); // add this
+    }
+
+    public String getCrystalBlockMessage() {
+        if (msgCrystalBlock == null || msgCrystalBlock.isEmpty()) {
+            return "&cYou cannot attack unprotected players with crystals while protected.";
+        }
+        return msgCrystalBlock;
     }
 
     @EventHandler
