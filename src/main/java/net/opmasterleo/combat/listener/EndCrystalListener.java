@@ -55,7 +55,7 @@ public class EndCrystalListener implements Listener {
                                     if (nearby instanceof Player target) {
                                         boolean attackerProtected = protection.isActuallyProtected(player);
                                         boolean targetProtected = protection.isActuallyProtected(target);
-                                        if (attackerProtected && !targetProtected && !player.getUniqueId().equals(target.getUniqueId())) {
+                                        if (player != null && attackerProtected && !targetProtected && !player.getUniqueId().equals(target.getUniqueId())) {
                                             // Block the attack
                                             event.setCancelled(true);
                                             protection.sendBlockedMessage(player, protection.getCrystalBlockMessage());
