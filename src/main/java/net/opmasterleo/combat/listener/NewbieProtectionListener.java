@@ -189,7 +189,8 @@ public class NewbieProtectionListener implements Listener {
         sendMessage(player, msg);
     }
 
-    private void sendBlockedMessage(Player player, String rawMsg) {
+    // Change from private to public
+    public void sendBlockedMessage(Player player, String rawMsg) {
         String msg = PlaceholderManager.applyPlaceholders(player, rawMsg, getProtectionLeft(player) / 1000);
         sendMessage(player, msg);
     }

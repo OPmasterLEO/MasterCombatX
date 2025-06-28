@@ -22,7 +22,6 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 
 import net.opmasterleo.combat.Combat;
-import net.opmasterleo.combat.listener.NewbieProtectionListener;
 
 public class EndCrystalListener implements Listener {
     private final ProtocolManager protocolManager;
