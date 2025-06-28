@@ -50,4 +50,9 @@ public final class CrystalManager {
     public void removeCrystal(Entity crystal) {
         this.endCrystalMap.remove(crystal.getUniqueId());
     }
+
+    // Optional: Call this periodically to clean up crystals that no longer exist
+    public void cleanupInvalidCrystals() {
+        endCrystalMap.keySet().removeIf(uuid -> Bukkit.getEntity(uuid) == null);
+    }
 }

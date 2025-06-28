@@ -36,27 +36,20 @@ public class EndCrystalListener implements Listener {
             @Override
             public void onPacketReceiving(PacketEvent event) {
                 if (event.getPacketType() == PacketType.Play.Client.USE_ENTITY) {
-                    // Only extract IDs and player reference here
                     final Player player = event.getPlayer();
                     final int entityId = event.getPacket().getIntegers().read(0);
 
-                    // Schedule Bukkit API logic on main thread
                     Bukkit.getScheduler().runTask(Combat.getInstance(), () -> {
-                        Entity entity = null;
-                        if (player != null && player.getWorld() != null) {
-                            entity = getEntityById(player.getWorld(), entityId);
-                        }
+                        Entity entity = getEntityById(player.getWorld(), entityId);
                         if (entity != null && entity.getType() == EntityType.END_CRYSTAL) {
-                            // --- Newbie protection check ---
                             Combat combat = Combat.getInstance();
                             NewbieProtectionListener protection = combat.getNewbieProtectionListener();
-                            if (protection != null) {
+                            boolean attackerProtected = protection != null && protection.isActuallyProtected(player);
+                            if (protection != null && attackerProtected) {
                                 for (Entity nearby : entity.getNearbyEntities(4.0, 4.0, 4.0)) {
-                                    if (nearby instanceof Player target) {
-                                        boolean attackerProtected = protection.isActuallyProtected(player);
-                                        boolean targetProtected = protection.isActuallyProtected(target);
-                                        if (player != null && attackerProtected && !targetProtected && !player.getUniqueId().equals(target.getUniqueId())) {
-                                            // Block the attack
+                                    if (nearby instanceof Player) {
+                                        Player target = (Player) nearby;
+                                        if (!player.getUniqueId().equals(target.getUniqueId()) && !protection.isActuallyProtected(target)) {
                                             event.setCancelled(true);
                                             protection.sendBlockedMessage(player, protection.getCrystalBlockMessage());
                                             return;
@@ -64,7 +57,6 @@ public class EndCrystalListener implements Listener {
                                     }
                                 }
                             }
-                            // Register placer as usual
                             Combat.getInstance().registerCrystalPlacer(entity, player);
                         }
                     });
