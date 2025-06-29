@@ -44,18 +44,22 @@ public class EndCrystalListener implements Listener {
                         if (entity != null && entity.getType() == EntityType.END_CRYSTAL) {
                             Combat combat = Combat.getInstance();
                             NewbieProtectionListener protection = combat.getNewbieProtectionListener();
-                            boolean attackerProtected = protection != null && protection.isActuallyProtected(player);
-                            if (protection != null && attackerProtected) {
+                            // Only block if the target is a player and attacker is protected
+                            boolean shouldBlock = false;
+                            if (protection != null && protection.isActuallyProtected(player)) {
                                 for (Entity nearby : entity.getNearbyEntities(4.0, 4.0, 4.0)) {
-                                    if (nearby instanceof Player) {
-                                        Player target = (Player) nearby;
-                                        if (!player.getUniqueId().equals(target.getUniqueId()) && !protection.isActuallyProtected(target)) {
-                                            event.setCancelled(true);
-                                            protection.sendBlockedMessage(player, protection.getCrystalBlockMessage());
-                                            return;
-                                        }
+                                    if (nearby instanceof Player target && !player.getUniqueId().equals(target.getUniqueId())) {
+                                        shouldBlock = true;
+                                        break;
                                     }
                                 }
+                            }
+                            if (shouldBlock) {
+                                event.setCancelled(true);
+                                if (protection != null) {
+                                    protection.sendBlockedMessage(player, protection.getCrystalBlockMessage());
+                                }
+                                return;
                             }
                             Combat.getInstance().registerCrystalPlacer(entity, player);
                         }

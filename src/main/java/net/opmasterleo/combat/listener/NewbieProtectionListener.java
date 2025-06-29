@@ -225,13 +225,17 @@ public class NewbieProtectionListener implements Listener {
         moveMessageSent.remove(player.getUniqueId());
     }
 
+    // Sends a blocked message to the player in the configured message type
+    public void sendBlockedMessage(Player player, String msg) {
+        if (msg == null || msg.isEmpty()) return;
+        String formattedMsg = PlaceholderManager.applyPlaceholders(player, msg, getProtectionLeft(player) / 1000);
+        sendMessage(player, formattedMsg, messageType);
+    }
+
     private long getProtectionLeft(Player player) {
         Long end = protectionEnd.get(player.getUniqueId());
         if (end == null) return 0;
         long left = end - System.currentTimeMillis();
-        return Math.max(left, 0);
-    }
-}
         return Math.max(left, 0);
     }
 }
