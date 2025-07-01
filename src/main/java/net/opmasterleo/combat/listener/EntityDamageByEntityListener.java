@@ -38,8 +38,10 @@ public final class EntityDamageByEntityListener implements Listener {
             }
         }
 
+        // VANISH CHECK: If either player is vanished, skip ALL combat logic
         SuperVanishManager vanish = combat.getSuperVanishManager();
-        if ((vanish != null && vanish.isVanished(player)) || (damagerPlayer != null && vanish != null && vanish.isVanished(damagerPlayer))) {
+        if ((vanish != null && player != null && vanish.isVanished(player)) ||
+            (vanish != null && damagerPlayer != null && vanish.isVanished(damagerPlayer))) {
             return;
         }
 

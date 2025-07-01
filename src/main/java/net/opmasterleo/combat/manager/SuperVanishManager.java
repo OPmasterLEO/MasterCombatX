@@ -13,7 +13,6 @@ public class SuperVanishManager {
         this.superVanish = Bukkit.getPluginManager().getPlugin("SuperVanish");
     }
 
-    // New constructor accepting a Plugin instance
     public SuperVanishManager(Plugin plugin) {
         this.superVanish = Bukkit.getPluginManager().getPlugin("SuperVanish");
     }
@@ -27,11 +26,11 @@ public class SuperVanishManager {
     }
 
     public boolean isVanished(Player player) {
-        if (!vanishApiAvailable || superVanish == null || !superVanish.isEnabled() || player == null) return false;
+        if (!vanishApiAvailable || superVanish == null || !superVanish.isEnabled() || player == null)
+            return false;
         try {
             return de.myzelyam.api.vanish.VanishAPI.isInvisible(player);
         } catch (Throwable e) {
-            org.bukkit.Bukkit.getLogger().warning("[MasterCombat] SuperVanish API error: " + e.getClass().getName() + ": " + e.getMessage());
             return false;
         }
     }
