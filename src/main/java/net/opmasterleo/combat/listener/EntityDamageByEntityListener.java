@@ -1,7 +1,6 @@
 package net.opmasterleo.combat.listener;
 
 import java.util.Set;
-
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.FishHook;
@@ -12,8 +11,8 @@ import org.bukkit.entity.Tameable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-
 import net.opmasterleo.combat.Combat;
+import net.opmasterleo.combat.manager.SuperVanishManager;
 
 public final class EntityDamageByEntityListener implements Listener {
 
@@ -25,6 +24,25 @@ public final class EntityDamageByEntityListener implements Listener {
         if (combat.getWorldGuardUtil() != null && combat.getWorldGuardUtil().isPvpDenied(player)) return;
 
         Entity damager = event.getDamager();
+        Player damagerPlayer = null;
+        if (damager instanceof Player p) damagerPlayer = p;
+        else if (damager instanceof Projectile proj && proj.getShooter() instanceof Player shooter) damagerPlayer = shooter;
+        else if (damager instanceof Tameable tame && tame.getOwner() instanceof Player owner) damagerPlayer = owner;
+        else if (damager instanceof FishHook hook && hook.getShooter() instanceof Player shooter) damagerPlayer = shooter;
+        else if (damager instanceof TNTPrimed tnt && tnt.getSource() instanceof Player source) damagerPlayer = source;
+        // Resolve end crystal placer for vanish check
+        if (damagerPlayer == null && damager.getType() == EntityType.END_CRYSTAL && combat.getCrystalManager() != null) {
+            Player placer = combat.getCrystalManager().getPlacer(damager);
+            if (placer != null) {
+                damagerPlayer = placer;
+            }
+        }
+
+        SuperVanishManager vanish = combat.getSuperVanishManager();
+        if ((vanish != null && vanish.isVanished(player)) || (damagerPlayer != null && vanish != null && vanish.isVanished(damagerPlayer))) {
+            return;
+        }
+
         boolean selfCombat = combat.getConfig().getBoolean("self-combat", false);
         boolean linkProjectiles = combat.getConfig().getBoolean("link-projectiles", true);
         boolean linkEndCrystals = combat.getConfig().getBoolean("link-end-crystals", true);
@@ -34,103 +52,60 @@ public final class EntityDamageByEntityListener implements Listener {
         Set<String> ignoredProjectiles = combat.getIgnoredProjectiles();
 
         if (damager instanceof Player damagerP) {
-            // SuperVanish: skip combat if either player is vanished
-            if (combat.getSuperVanishManager() != null &&
-                (combat.getSuperVanishManager().isVanished(player) || combat.getSuperVanishManager().isVanished(damagerP))) {
-                return;
-            }
             if (damagerP.getUniqueId().equals(player.getUniqueId())) {
-                if (selfCombat) {
-                    if (!combat.isInCombat(player))
-                        combat.setCombat(player, player);
-                }
+                if (selfCombat) combat.setCombat(player, player);
                 return;
             }
-            if (!combat.isInCombat(player) || combat.getCombatOpponent(player) == null || !combat.getCombatOpponent(player).getUniqueId().equals(damagerP.getUniqueId())) {
-                combat.setCombat(player, damagerP);
-                combat.setCombat(damagerP, player);
-            }
+            combat.setCombat(player, damagerP);
+            combat.setCombat(damagerP, player);
+            return;
         }
 
         if (damager instanceof Projectile projectile && linkProjectiles) {
             if (projectile.getShooter() instanceof Player shooter) {
-                // SuperVanish: skip combat if either player is vanished
-                if (combat.getSuperVanishManager() != null &&
-                    (combat.getSuperVanishManager().isVanished(player) || combat.getSuperVanishManager().isVanished(shooter))) {
-                    return;
-                }
                 if (shooter.getUniqueId().equals(player.getUniqueId())) {
-                    if (selfCombat && !combat.isInCombat(player)) {
-                        combat.setCombat(player, player);
-                    }
-                } else {
-                    if (!ignoredProjectiles.contains(projectile.getType().name().toUpperCase())) {
-                        if (!combat.isInCombat(player) || combat.getCombatOpponent(player) == null || !combat.getCombatOpponent(player).getUniqueId().equals(shooter.getUniqueId())) {
-                            combat.setCombat(player, shooter);
-                            combat.setCombat(shooter, player);
-                        }
-                    }
+                    if (selfCombat) combat.setCombat(player, player);
+                } else if (!ignoredProjectiles.contains(projectile.getType().name().toUpperCase())) {
+                    combat.setCombat(player, shooter);
+                    combat.setCombat(shooter, player);
                 }
             }
+            return;
         }
 
         if (linkEndCrystals && damager.getType() == EntityType.END_CRYSTAL) {
             Player placer = combat.getCrystalManager().getPlacer(damager);
             if (placer != null) {
-                // SuperVanish: skip combat if either player is vanished
-                if (combat.getSuperVanishManager() != null &&
-                    (combat.getSuperVanishManager().isVanished(player) || combat.getSuperVanishManager().isVanished(placer))) {
-                    return;
-                }
-                if (placer.getUniqueId().equals(player.getUniqueId()) && !selfCombat) {
-                    return;
-                }
-                if (!combat.isInCombat(player) || combat.getCombatOpponent(player) == null || !combat.getCombatOpponent(player).getUniqueId().equals(placer.getUniqueId())) {
-                    combat.setCombat(player, placer);
-                    combat.setCombat(placer, player);
-                }
+                if (placer.getUniqueId().equals(player.getUniqueId()) && !selfCombat) return;
+                combat.setCombat(player, placer);
+                combat.setCombat(placer, player);
             }
+            return;
         }
 
         if (linkPets && damager instanceof Tameable tameable) {
             if (tameable.getOwner() instanceof Player owner) {
-                // SuperVanish: skip combat if either player is vanished
-                if (combat.getSuperVanishManager() != null &&
-                    (combat.getSuperVanishManager().isVanished(player) || combat.getSuperVanishManager().isVanished(owner))) {
-                    return;
-                }
-                if (owner.getUniqueId().equals(player.getUniqueId())) return;
-                if (!combat.isInCombat(player) || combat.getCombatOpponent(player) == null || !combat.getCombatOpponent(player).getUniqueId().equals(owner.getUniqueId())) {
+                if (!owner.getUniqueId().equals(player.getUniqueId())) {
                     combat.setCombat(player, owner);
                     combat.setCombat(owner, player);
                 }
             }
+            return;
         }
 
         if (linkFishingRod && damager instanceof FishHook fishHook) {
             if (fishHook.getShooter() instanceof Player shooter) {
-                // SuperVanish: skip combat if either player is vanished
-                if (combat.getSuperVanishManager() != null &&
-                    (combat.getSuperVanishManager().isVanished(player) || combat.getSuperVanishManager().isVanished(shooter))) {
-                    return;
-                }
-                if (shooter.getUniqueId().equals(player.getUniqueId())) return;
-                if (!combat.isInCombat(player) || combat.getCombatOpponent(player) == null || !combat.getCombatOpponent(player).getUniqueId().equals(shooter.getUniqueId())) {
+                if (!shooter.getUniqueId().equals(player.getUniqueId())) {
                     combat.setCombat(player, shooter);
                     combat.setCombat(shooter, player);
                 }
             }
+            return;
         }
 
         if (linkTnt && damager instanceof TNTPrimed tnt) {
             if (tnt.getSource() instanceof Player source) {
-                // SuperVanish: skip combat if either player is vanished
-                if (combat.getSuperVanishManager() != null &&
-                    (combat.getSuperVanishManager().isVanished(player) || combat.getSuperVanishManager().isVanished(source))) {
-                    return;
-                }
-                if (source.getUniqueId().equals(player.getUniqueId())) return;
-                if (!combat.isInCombat(player) || combat.getCombatOpponent(player) == null || !combat.getCombatOpponent(player).getUniqueId().equals(source.getUniqueId())) {
+                if (!source.getUniqueId().equals(player.getUniqueId())) {
                     combat.setCombat(player, source);
                     combat.setCombat(source, player);
                 }

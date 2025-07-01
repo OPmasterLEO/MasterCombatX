@@ -67,6 +67,9 @@ public class Combat extends JavaPlugin implements Listener {
 
         combatEnabled = getConfig().getBoolean("combat-enabled", true);
         glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
+        this.superVanishManager = new SuperVanishManager(this);
+        this.worldGuardUtil = new WorldGuardUtil();
+        this.crystalManager = new CrystalManager();
 
         // Register main and protection commands
         getCommand("combat").setExecutor(new CombatCommand());
@@ -263,15 +266,6 @@ public class Combat extends JavaPlugin implements Listener {
         sendCombatEndMessage(player);
     }
 
-    private void updateCombatState(Player player, Player opponent, long duration) {
-        combatPlayers.put(player.getUniqueId(), duration);
-        if (opponent != null) {
-            combatPlayers.put(opponent.getUniqueId(), duration);
-            combatOpponents.put(player.getUniqueId(), opponent.getUniqueId());
-            combatOpponents.put(opponent.getUniqueId(), player.getUniqueId());
-        }
-    }
-
     private void sendCombatEndMessage(Player player) {
         String noLongerInCombatMsg = getConfig().getString("Messages.NoLongerInCombat", "");
         if (noLongerInCombatMsg != null && !noLongerInCombatMsg.isEmpty()) {
@@ -301,24 +295,30 @@ public class Combat extends JavaPlugin implements Listener {
                 return;
             }
         }
-        // SuperVanish: Prevent combat if either player is vanished
         if (superVanishManager != null) {
             if ((player != null && superVanishManager.isVanished(player)) ||
                 (opponent != null && superVanishManager.isVanished(opponent))) {
                 return;
             }
         }
-        if (!combatEnabled || !isCombatEnabledInWorld(player)) return;
-        if (shouldBypass(player)) return;
+        if (!combatEnabled || player == null || !isCombatEnabledInWorld(player)) return;
+        if (player == null || shouldBypass(player)) return;
 
-        long duration = System.currentTimeMillis() + 1000 * getConfig().getLong("Duration", 0);
-        if (player == null) return;
-        Long current = combatPlayers.get(player.getUniqueId());
-        if (current != null && current >= duration) return;
-        updateCombatState(player, opponent, duration);
-        sendCombatStartMessage(player);
-        restrictMovement(player);
-        if (glowingEnabled) setPlayerGlowingIfNeeded(player.getUniqueId(), true);
+        // Always overwrite both players' expiry timestamps and opponents
+        long expiry = System.currentTimeMillis() + (getConfig().getLong("Duration", 0) * 1000L);
+        if (player != null) {
+            combatOpponents.put(player.getUniqueId(), opponent != null ? opponent.getUniqueId() : null);
+            combatPlayers.put(player.getUniqueId(), expiry);
+        }
+        if (opponent != null) {
+            combatOpponents.put(opponent.getUniqueId(), player != null ? player.getUniqueId() : null);
+            combatPlayers.put(opponent.getUniqueId(), expiry);
+        }
+        if (player != null) {
+            sendCombatStartMessage(player);
+            restrictMovement(player);
+            if (glowingEnabled) setPlayerGlowingIfNeeded(player.getUniqueId(), true);
+        }
         if (glowingEnabled && opponent != null) setPlayerGlowingIfNeeded(opponent.getUniqueId(), true);
     }
 
