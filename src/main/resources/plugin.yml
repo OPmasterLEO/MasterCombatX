@@ -10,6 +10,7 @@ depend:
 softdepend:
   - ProtocolLib
   - PlaceholderAPI
+  - SuperVanish
 commands:
   combat:
     description: Main command for combat plugin.

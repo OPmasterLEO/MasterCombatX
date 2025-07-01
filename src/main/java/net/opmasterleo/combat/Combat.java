@@ -34,6 +34,7 @@ import net.opmasterleo.combat.listener.NewbieProtectionListener;
 import net.opmasterleo.combat.manager.CrystalManager;
 import net.opmasterleo.combat.manager.Update;
 import net.opmasterleo.combat.manager.WorldGuardUtil;
+import net.opmasterleo.combat.manager.SuperVanishManager;
 
 public class Combat extends JavaPlugin implements Listener {
 
@@ -50,6 +51,7 @@ public class Combat extends JavaPlugin implements Listener {
     private EndCrystalListener endCrystalListener;
     private NewbieProtectionListener newbieProtectionListener;
     private CrystalManager crystalManager;
+    private SuperVanishManager superVanishManager;
 
     private boolean disableElytra;
     private boolean enderPearlEnabled;
@@ -469,6 +471,10 @@ public class Combat extends JavaPlugin implements Listener {
 
     public CrystalManager getCrystalManager() {
         return crystalManager;
+    }
+
+    public SuperVanishManager getSuperVanishManager() {
+        return superVanishManager;
     }
 
     public boolean isCombatEnabled() {
