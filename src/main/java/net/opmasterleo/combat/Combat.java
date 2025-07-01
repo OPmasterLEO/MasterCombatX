@@ -301,6 +301,13 @@ public class Combat extends JavaPlugin implements Listener {
                 return;
             }
         }
+        // SuperVanish: Prevent combat if either player is vanished
+        if (superVanishManager != null) {
+            if ((player != null && superVanishManager.isVanished(player)) ||
+                (opponent != null && superVanishManager.isVanished(opponent))) {
+                return;
+            }
+        }
         if (!combatEnabled || !isCombatEnabledInWorld(player)) return;
         if (shouldBypass(player)) return;
 
