@@ -32,7 +32,6 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
         NewbieProtectionListener protectionListener = combat.getNewbieProtectionListener();
         String removeProtectCommand = combat.getConfig().getString("NewbieProtection.settings.disableCommand", "removeprotect").toLowerCase();
 
-        // Handle /protection and /removeprotect as independent commands
         String cmdLabel = label.toLowerCase();
         if (cmdLabel.equals("protection")) {
             if (protectionListener.isActuallyProtected(player)) {

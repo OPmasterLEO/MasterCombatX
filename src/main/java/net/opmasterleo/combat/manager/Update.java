@@ -38,46 +38,33 @@ public class Update {
 
     @SuppressWarnings("deprecation")
     public static void notifyOnServerOnline(Plugin plugin) {
+        Runnable notificationTask = () -> {
+            String pluginName = plugin.getDescription().getName();
+            String currentVersion = plugin.getDescription().getVersion();
+            String normalizedCurrent = normalizeVersion(currentVersion);
+            String normalizedLatest = latestVersion != null ? normalizeVersion(latestVersion) : null;
+
+            if (latestVersion == null) {
+                Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
+                return;
+            }
+
+            int comparison = compareVersions(normalizedCurrent, normalizedLatest);
+            
+            if (comparison == 0) {
+                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " (v" + currentVersion + ").");
+            } else if (comparison < 0) {
+                Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» An update is required, installed version v" + currentVersion + ", but latest is v" + latestVersion + ".");
+                Bukkit.getConsoleSender().sendMessage("§eUse /combat update to update to the latest version.");
+            } else {
+                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» You are running a developer build (v" + currentVersion + "), but the latest public version is v" + latestVersion + ".");
+            }
+        };
+
         if (isFolia()) {
-            Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
-                String pluginName = plugin.getDescription().getName();
-                String currentVersion = normalizeVersion(plugin.getDescription().getVersion());
-                String normalizedLatestVersion = latestVersion != null ? normalizeVersion(latestVersion) : null;
-
-                if (latestVersion == null) {
-                    Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
-                    return;
-                }
-
-                if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " (v" + currentVersion + ").");
-                } else if (currentVersion.compareTo(normalizedLatestVersion) < 0) {
-                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» An update is required, installed version v" + currentVersion + ", but latest is v" + normalizedLatestVersion + ".");
-                    Bukkit.getConsoleSender().sendMessage("§eUse /combat update to update to the latest version.");
-                } else {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running a newer version of " + pluginName + " (v" + currentVersion + ") but the latest is (v" + normalizedLatestVersion + ").");
-                }
-            }, 20L * 3);
+            Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> notificationTask.run(), 20L * 3);
         } else {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                String pluginName = plugin.getDescription().getName();
-                String currentVersion = normalizeVersion(plugin.getDescription().getVersion());
-                String normalizedLatestVersion = latestVersion != null ? normalizeVersion(latestVersion) : null;
-
-                if (latestVersion == null) {
-                    Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
-                    return;
-                }
-
-                if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " (v" + currentVersion + ").");
-                } else if (currentVersion.compareTo(normalizedLatestVersion) < 0) {
-                    Bukkit.getConsoleSender().sendMessage("§e[" + pluginName + "]» An update is required, installed version v" + currentVersion + ", but latest is v" + normalizedLatestVersion + ".");
-                    Bukkit.getConsoleSender().sendMessage("§eUse /combat update to update to the latest version.");
-                } else {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» This server is running a newer version of " + pluginName + " (v" + currentVersion + ") but the latest is (v" + normalizedLatestVersion + ").");
-                }
-            }, 20L * 3);
+            Bukkit.getScheduler().runTaskLater(plugin, notificationTask, 20L * 3);
         }
     }
 
@@ -92,28 +79,31 @@ public class Update {
         }
 
         String pluginName = plugin.getDescription().getName();
-        String currentVersion = normalizeVersion(plugin.getDescription().getVersion());
-        String normalizedLatestVersion = latestVersion != null ? normalizeVersion(latestVersion) : null;
+        String currentVersion = plugin.getDescription().getVersion();
+        String normalizedCurrent = normalizeVersion(currentVersion);
+        String normalizedLatest = latestVersion != null ? normalizeVersion(latestVersion) : null;
 
         if (latestVersion == null) {
             player.sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
             return;
         }
 
-        if (currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
+        int comparison = compareVersions(normalizedCurrent, normalizedLatest);
+        
+        if (comparison == 0) {
             player.sendMessage("§a[" + pluginName + "]» This server is running the latest " + pluginName + " (v" + currentVersion + ").");
-        } else if (currentVersion.compareTo(normalizedLatestVersion) > 0) {
-            player.sendMessage("§a[" + pluginName + "]» This server is running a newer version of " + pluginName + " (v" + currentVersion + ") but the latest is (v" + normalizedLatestVersion + ").");
-        } else {
+        } else if (comparison < 0) {
             player.sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version v" + currentVersion +
-                    " but the latest is (v" + normalizedLatestVersion + ").");
+                    " but the latest is v" + latestVersion + ".");
+        } else {
+            player.sendMessage("§a[" + pluginName + "]» You are running a developer build (v" + currentVersion + "), but the latest public version is v" + latestVersion + ".");
         }
     }
 
     public static void downloadAndReplaceJar(Plugin plugin) {
         if (!updateDownloadInProgress) {
             updateDownloadInProgress = true;
-            Bukkit.getConsoleSender().sendMessage("Downloading and applying the update ...");
+            Bukkit.getConsoleSender().sendMessage("Downloading and applying the update...");
             if (isFolia()) {
                 Bukkit.getGlobalRegionScheduler().execute(plugin, () -> performJarReplacement(plugin));
             } else {
@@ -143,15 +133,6 @@ public class Update {
 
                 latestVersion = parseVersion(response.toString());
                 downloadUrl = parseDownloadUrl(response.toString());
-
-                String currentVersion = normalizeVersion(plugin.getDescription().getVersion());
-                String normalizedLatestVersion = latestVersion != null ? normalizeVersion(latestVersion) : null;
-
-                if (latestVersion != null && !currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Update found!");
-                } else if (latestVersion != null && currentVersion.equalsIgnoreCase(normalizedLatestVersion)) {
-                    Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» You already have the latest version (" + currentVersion + ").");
-                }
             } else {
                 Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to check for updates. HTTP Response Code: " + connection.getResponseCode());
             }
@@ -172,8 +153,7 @@ public class Update {
                 return;
             }
 
-            String normalizedVersion = latestVersion.replace(pluginName + "-", "").replace(pluginName, "");
-            File tempFile = new File(updateFolder, pluginName + "-" + normalizedVersion + ".jar");
+            File tempFile = new File(updateFolder, pluginName + "-" + latestVersion + ".jar");
 
             HttpURLConnection connection = (HttpURLConnection) URI.create(downloadUrl).toURL().openConnection();
             connection.setRequestMethod("GET");
@@ -218,17 +198,39 @@ public class Update {
         return version.replaceAll("[^0-9.]", "");
     }
 
+    private static int compareVersions(String v1, String v2) {
+        if (v1 == null || v2 == null) return 0;
+        
+        String[] parts1 = v1.split("\\.");
+        String[] parts2 = v2.split("\\.");
+        
+        int length = Math.max(parts1.length, parts2.length);
+        for (int i = 0; i < length; i++) {
+            int num1 = i < parts1.length ? Integer.parseInt(parts1[i]) : 0;
+            int num2 = i < parts2.length ? Integer.parseInt(parts2[i]) : 0;
+            
+            if (num1 != num2) {
+                return num1 - num2;
+            }
+        }
+        return 0;
+    }
+
     private static String parseVersion(String jsonResponse) {
         String tagPrefix = "\"tag_name\":\"";
-        int startIndex = jsonResponse.indexOf(tagPrefix) + tagPrefix.length();
+        int startIndex = jsonResponse.indexOf(tagPrefix);
+        if (startIndex == -1) return null;
+        startIndex += tagPrefix.length();
         int endIndex = jsonResponse.indexOf("\"", startIndex);
         return jsonResponse.substring(startIndex, endIndex);
     }
 
     private static String parseDownloadUrl(String jsonResponse) {
         String urlPrefix = "\"browser_download_url\":\"";
-        int startIndex = jsonResponse.indexOf(urlPrefix) + urlPrefix.length();
+        int startIndex = jsonResponse.indexOf(urlPrefix);
+        if (startIndex == -1) return null;
+        startIndex += urlPrefix.length();
         int endIndex = jsonResponse.indexOf("\"", startIndex);
-        return startIndex > urlPrefix.length() - 1 ? jsonResponse.substring(startIndex, endIndex) : null;
+        return jsonResponse.substring(startIndex, endIndex);
     }
 }

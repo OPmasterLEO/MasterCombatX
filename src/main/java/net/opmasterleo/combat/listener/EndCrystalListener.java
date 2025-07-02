@@ -20,6 +20,7 @@ import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.ListenerPriority;
 import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.wrappers.EnumWrappers;
 
 import net.opmasterleo.combat.Combat;
 
@@ -38,29 +39,35 @@ public class EndCrystalListener implements Listener {
                 if (event.getPacketType() == PacketType.Play.Client.USE_ENTITY) {
                     final Player player = event.getPlayer();
                     final int entityId = event.getPacket().getIntegers().read(0);
+                    EnumWrappers.EntityUseAction action = event.getPacket().getEnumEntityUseActions().read(0).getAction();
+
+                    if (action != EnumWrappers.EntityUseAction.INTERACT) {
+                        return;
+                    }
 
                     Bukkit.getScheduler().runTask(Combat.getInstance(), () -> {
                         Entity entity = getEntityById(player.getWorld(), entityId);
                         if (entity != null && entity.getType() == EntityType.END_CRYSTAL) {
                             Combat combat = Combat.getInstance();
                             NewbieProtectionListener protection = combat.getNewbieProtectionListener();
-                            // Only block if the target is a player and attacker is protected
+                            
                             boolean shouldBlock = false;
                             if (protection != null && protection.isActuallyProtected(player)) {
                                 for (Entity nearby : entity.getNearbyEntities(4.0, 4.0, 4.0)) {
-                                    if (nearby instanceof Player target && !player.getUniqueId().equals(target.getUniqueId())) {
+                                    if (nearby instanceof Player target && 
+                                        !player.getUniqueId().equals(target.getUniqueId())) {
                                         shouldBlock = true;
                                         break;
                                     }
                                 }
                             }
-                            if (shouldBlock) {
+                            
+                            if (shouldBlock && protection != null) {
                                 event.setCancelled(true);
-                                if (protection != null) {
-                                    protection.sendBlockedMessage(player, protection.getCrystalBlockMessage());
-                                }
+                                protection.sendBlockedMessage(player, protection.getCrystalBlockMessage());
                                 return;
                             }
+                            
                             Combat.getInstance().registerCrystalPlacer(entity, player);
                         }
                     });
@@ -69,7 +76,6 @@ public class EndCrystalListener implements Listener {
         });
     }
 
-    // Helper to get entity by ID in a world (safe on main thread)
     private Entity getEntityById(org.bukkit.World world, int id) {
         for (Entity entity : world.getEntities()) {
             if (entity.getEntityId() == id) return entity;
@@ -96,7 +102,20 @@ public class EndCrystalListener implements Listener {
     private boolean handleCrystalDamageWithEvent(Entity damaged, Entity damager, EntityDamageByEntityEvent event) {
         Player damagedPlayer = (damaged instanceof Player) ? (Player) damaged : null;
         Player placer = Combat.getInstance().getCrystalManager().getPlacer(damager);
+        
         if (damagedPlayer != null) {
+            Combat combat = Combat.getInstance();
+            NewbieProtectionListener protection = combat.getNewbieProtectionListener();
+            
+            if (placer != null && protection != null) {
+                if (protection.isActuallyProtected(placer)) {
+                    if (!protection.isActuallyProtected(damagedPlayer)) {
+                        protection.sendBlockedMessage(placer, protection.getCrystalBlockMessage());
+                        return true;
+                    }
+                }
+            }
+            
             if (placer != null) {
                 handleCombat(damagedPlayer, placer);
             } else {

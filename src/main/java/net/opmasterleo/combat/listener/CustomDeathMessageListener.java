@@ -17,23 +17,19 @@ public class CustomDeathMessageListener implements Listener {
         FileConfiguration config = Combat.getInstance().getConfig();
         if (!config.getBoolean("CustomDeathMessage.enabled", false)) return;
 
-        // Load & parse the prefix from config
         String prefixRaw = config.getString("CustomDeathMessage.prefix", "");
         Component prefix = ChatUtil.parse(prefixRaw);
 
-        // Preserve original translatable death message
         Component vanillaMessage = event.deathMessage();
         if (vanillaMessage == null) {
             vanillaMessage = Component.translatable("death.attack.generic", Component.text(event.getEntity().getName()));
         }
 
-        // Inherit color from prefix if needed
         TextColor lastColor = ChatUtil.getLastColor(prefix);
         if (lastColor != null) {
             vanillaMessage = vanillaMessage.colorIfAbsent(lastColor);
         }
 
-        // Combine prefix + vanilla translatable message
         Component finalMessage = prefix.append(vanillaMessage);
         event.deathMessage(finalMessage);
     }

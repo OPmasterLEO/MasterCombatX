@@ -6,6 +6,7 @@ import net.opmasterleo.combat.util.ChatUtil;
 import org.bukkit.Location;
 import org.bukkit.entity.EnderCrystal;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.TNTPrimed;
@@ -36,7 +37,7 @@ public class NewbieProtectionListener implements Listener {
     private String msgTriedAttack;
     private String msgAttacker;
     private String msgExpired;
-    private String msgCrystalBlock; // add this
+    private String msgCrystalBlock;
 
     private EndCrystalListener endCrystalListener;
 
@@ -153,6 +154,16 @@ public class NewbieProtectionListener implements Listener {
             if (placer != null) attacker = placer;
         }
 
+        if (attacker != null && isActuallyProtected(attacker) && damagerEntity.getType() == EntityType.END_CRYSTAL) {
+            for (Entity nearby : damagerEntity.getNearbyEntities(4.0, 4.0, 4.0)) {
+                if (nearby instanceof Player target && !target.getUniqueId().equals(attacker.getUniqueId())) {
+                    event.setCancelled(true);
+                    sendBlockedMessage(attacker, msgTriedAttack);
+                    return;
+                }
+            }
+        }
+
         if (victim == null && !mobsProtect) return;
 
         if (attacker != null && isActuallyProtected(attacker) && victim != null && !attacker.getUniqueId().equals(victim.getUniqueId())) {
@@ -184,14 +195,12 @@ public class NewbieProtectionListener implements Listener {
         return false;
     }
 
-    // Sends only chat for protected message
     private void sendProtectedMessage(Player player) {
         long left = getProtectionLeft(player);
         String msg = PlaceholderManager.applyPlaceholders(player, msgProtected, left / 1000);
         sendMessage(player, msg, "chat");
     }
 
-    // For /protection command: sends message in configured type
     public void sendProtectionLeft(Player player) {
         long left = getProtectionLeft(player);
         String msg = PlaceholderManager.applyPlaceholders(player,
@@ -200,7 +209,6 @@ public class NewbieProtectionListener implements Listener {
         sendMessage(player, msg, messageType);
     }
 
-    // Overload to allow explicit type
     private void sendMessage(Player player, String msg, String type) {
         if (msg == null || msg.isEmpty()) return;
         String lowerType = type != null ? type.toLowerCase() : "chat";
@@ -225,7 +233,6 @@ public class NewbieProtectionListener implements Listener {
         moveMessageSent.remove(player.getUniqueId());
     }
 
-    // Sends a blocked message to the player in the configured message type
     public void sendBlockedMessage(Player player, String msg) {
         if (msg == null || msg.isEmpty()) return;
         String formattedMsg = PlaceholderManager.applyPlaceholders(player, msg, getProtectionLeft(player) / 1000);
