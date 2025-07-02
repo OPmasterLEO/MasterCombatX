@@ -30,6 +30,7 @@ public final class EntityDamageByEntityListener implements Listener {
         else if (damager instanceof Tameable tame && tame.getOwner() instanceof Player owner) damagerPlayer = owner;
         else if (damager instanceof FishHook hook && hook.getShooter() instanceof Player shooter) damagerPlayer = shooter;
         else if (damager instanceof TNTPrimed tnt && tnt.getSource() instanceof Player source) damagerPlayer = source;
+        // Resolve end crystal placer for vanish check
         if (damagerPlayer == null && damager.getType() == EntityType.END_CRYSTAL && combat.getCrystalManager() != null) {
             Player placer = combat.getCrystalManager().getPlacer(damager);
             if (placer != null) {
@@ -37,11 +38,16 @@ public final class EntityDamageByEntityListener implements Listener {
             }
         }
 
+        // Enhanced vanish check - skip combat if either player is vanished
         SuperVanishManager vanish = combat.getSuperVanishManager();
         if (vanish != null) {
-            boolean victimVanished = vanish.isVanished(player);
-            boolean attackerVanished = damagerPlayer != null && vanish.isVanished(damagerPlayer);
-            if (victimVanished || attackerVanished) {
+            // Check if victim is vanished
+            if (vanish.isVanished(player)) {
+                return;
+            }
+            
+            // Check if attacker is vanished
+            if (damagerPlayer != null && vanish.isVanished(damagerPlayer)) {
                 return;
             }
         }
