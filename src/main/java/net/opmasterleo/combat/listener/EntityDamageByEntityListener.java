@@ -16,7 +16,7 @@ import net.opmasterleo.combat.manager.SuperVanishManager;
 
 public final class EntityDamageByEntityListener implements Listener {
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGH) // Run before most other listeners
     public void handle(EntityDamageByEntityEvent event) {
         if (event.isCancelled()) return;
         if (!(event.getEntity() instanceof Player player)) return;
@@ -38,20 +38,22 @@ public final class EntityDamageByEntityListener implements Listener {
             }
         }
 
-        // Enhanced vanish check - skip combat if either player is vanished
+        // Enhanced vanish handling - cancel damage and prevent combat if either player is vanished
         SuperVanishManager vanish = combat.getSuperVanishManager();
         if (vanish != null) {
             // Check if victim is vanished
-            if (vanish.isVanished(player)) {
-                return;
-            }
-            
+            boolean victimVanished = vanish.isVanished(player);
             // Check if attacker is vanished
-            if (damagerPlayer != null && vanish.isVanished(damagerPlayer)) {
+            boolean attackerVanished = damagerPlayer != null && vanish.isVanished(damagerPlayer);
+            
+            // Cancel event if either player is vanished
+            if (victimVanished || attackerVanished) {
+                event.setCancelled(true);
                 return;
             }
         }
 
+        // Proceed with combat logic only if both players are not vanished
         boolean selfCombat = combat.getConfig().getBoolean("self-combat", false);
         boolean linkProjectiles = combat.getConfig().getBoolean("link-projectiles", true);
         boolean linkEndCrystals = combat.getConfig().getBoolean("link-end-crystals", true);

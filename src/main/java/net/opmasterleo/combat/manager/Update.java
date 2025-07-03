@@ -96,7 +96,7 @@ public class Update {
             player.sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version v" + currentVersion +
                     " but the latest is v" + latestVersion + ".");
         } else {
-            player.sendMessage("§a[" + pluginName + "]» You are running a developer build (v" + currentVersion + "), but the latest public version is v" + latestVersion + ".");
+            player.sendMessage("§a[" + pluginName + "]» You are running a developer build (v" + currentVersion + "), but the latest public version is " + latestVersion + ".");
         }
     }
 
