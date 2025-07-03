@@ -2,6 +2,7 @@ package net.opmasterleo.combat.command;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -75,8 +76,11 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
                     player.sendMessage(Component.text("PvP protection disabled. You are now vulnerable.").color(NamedTextColor.YELLOW));
                     break;
                 case "reload":
+                    long startTime = System.nanoTime(); // Start timing
                     Combat.getInstance().reloadCombatConfig();
-                    sender.sendMessage(Component.text("Config reloaded!").color(NamedTextColor.GREEN));
+                    long endTime = System.nanoTime(); // End timing
+                    long durationMs = TimeUnit.NANOSECONDS.toMillis(endTime - startTime);
+                    sender.sendMessage(Component.text("Config reloaded in " + durationMs + "ms!").color(NamedTextColor.GREEN));
                     break;
                 case "toggle":
                     Combat combatInstance = Combat.getInstance();
