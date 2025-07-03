@@ -11,6 +11,7 @@ import org.bukkit.entity.Tameable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.EventPriority;
 import net.opmasterleo.combat.Combat;
 import net.opmasterleo.combat.manager.SuperVanishManager;
 
