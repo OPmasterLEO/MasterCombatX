@@ -8,7 +8,7 @@ folia-supported: true
 depend:
   - WorldGuard
 softdepend:
-  - ProtocolLib
+  - PacketEvents
   - PlaceholderAPI
   - SuperVanish
 commands:

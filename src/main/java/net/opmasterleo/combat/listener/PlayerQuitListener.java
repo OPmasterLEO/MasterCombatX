@@ -1,42 +1,34 @@
 package net.opmasterleo.combat.listener;
 
-import org.bukkit.Bukkit;
+import net.opmasterleo.combat.Combat;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
-import net.opmasterleo.combat.Combat;
-import net.kyori.adventure.text.Component;
 
 public class PlayerQuitListener implements Listener {
+
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         Combat combat = Combat.getInstance();
+        
         if (combat.isInCombat(player)) {
             Player opponent = combat.getCombatOpponent(player);
-            if (opponent != null && opponent.isOnline() && !opponent.equals(player)) {
-                player.damage(1000.0, opponent);
-            } else {
-                player.damage(1000.0);
+            combat.getCombatPlayers().remove(player.getUniqueId());
+            combat.getCombatOpponents().remove(player.getUniqueId());
+            
+            if (combat.getGlowManager() != null) {
+                combat.getGlowManager().setGlowing(player, false);
+                if (opponent != null) {
+                    combat.getGlowManager().setGlowing(opponent, false);
+                }
             }
-        }
-
-        if (Combat.getInstance().isInCombat(player)) {
-            if (player.getHealth() > 0.0) {
-                player.setHealth(0.0);
+            
+            if (opponent != null) {
+                opponent.sendMessage(combat.getMessage("Messages.CombatLogged")
+                        .replace("%player%", player.getName()));
             }
-            String logoutMsg = Combat.getInstance().getMessage("Messages.LogoutInCombat");
-            if (logoutMsg != null && !logoutMsg.isEmpty()) {
-                Bukkit.getServer().sendMessage(Component.text(Combat.getInstance().getMessage("Messages.Prefix") + logoutMsg.replace("%player%", player.getName())));
-            }
-        }
-
-        Combat.getInstance().getCombatPlayers().remove(player.getUniqueId());
-        Combat.getInstance().removeCombatGlowing(player);
-        Player opponent = Combat.getInstance().getCombatOpponent(player);
-        if (opponent != null) {
-            Combat.getInstance().removeCombatGlowing(opponent);
         }
     }
 }

@@ -24,5 +24,4 @@ public class WorldGuardUtil {
         ApplicableRegionSet applicableRegions = regionQuery.getApplicableRegions(BukkitAdapter.adapt(player.getLocation()));
         return applicableRegions.getRegions().stream().anyMatch(region -> region.getFlag(Flags.PVP) == StateFlag.State.DENY);
     }
-
 }

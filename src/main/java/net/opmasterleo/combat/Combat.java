@@ -13,6 +13,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.EventPriority;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -31,7 +38,9 @@ import net.opmasterleo.combat.listener.PlayerQuitListener;
 import net.opmasterleo.combat.listener.PlayerTeleportListener;
 import net.opmasterleo.combat.listener.SelfCombatListener;
 import net.opmasterleo.combat.listener.NewbieProtectionListener;
+import net.opmasterleo.combat.listener.RespawnAnchorListener;
 import net.opmasterleo.combat.manager.CrystalManager;
+import net.opmasterleo.combat.manager.GlowManager;
 import net.opmasterleo.combat.manager.Update;
 import net.opmasterleo.combat.manager.WorldGuardUtil;
 import net.opmasterleo.combat.manager.SuperVanishManager;
@@ -52,6 +61,8 @@ public class Combat extends JavaPlugin implements Listener {
     private NewbieProtectionListener newbieProtectionListener;
     private CrystalManager crystalManager;
     private SuperVanishManager superVanishManager;
+    private GlowManager glowManager;
+    private PluginDescriptionFile pluginDescription; // Cached plugin description
 
     private boolean disableElytra;
     private boolean enderPearlEnabled;
@@ -64,12 +75,22 @@ public class Combat extends JavaPlugin implements Listener {
     public void onEnable() {
         saveDefaultConfig();
         instance = this;
+        pluginDescription = this.getDescription(); // Cache plugin description
 
         combatEnabled = getConfig().getBoolean("combat-enabled", true);
         glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
         this.superVanishManager = new SuperVanishManager(this);
-        this.worldGuardUtil = new WorldGuardUtil();
+        if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
+            worldGuardUtil = new WorldGuardUtil();
+        }
         this.crystalManager = new CrystalManager();
+        
+        // Initialize GlowManager if glowing is enabled
+        if (glowingEnabled) {
+            this.glowManager = new GlowManager();
+        } else {
+            this.glowManager = null;
+        }
 
         // Register main and protection commands
         getCommand("combat").setExecutor(new CombatCommand());
@@ -77,32 +98,6 @@ public class Combat extends JavaPlugin implements Listener {
         String disableCmd = getConfig().getString("NewbieProtection.settings.disableCommand", "removeprotect").toLowerCase();
         if (getCommand(disableCmd) != null) {
             getCommand(disableCmd).setExecutor(new CombatCommand());
-        }
-
-        if (!glowingEnabled) {
-            registerListeners();
-            startCombatTimer();
-            sendStartupMessage();
-            Update.checkForUpdates(this);
-            Update.notifyOnServerOnline(this);
-
-            int pluginId = 25701;
-            @SuppressWarnings("unused")
-            Metrics metrics = new Metrics(this, pluginId);
-
-            endCrystalListener = new EndCrystalListener();
-            Bukkit.getPluginManager().registerEvents(endCrystalListener, this);
-            Bukkit.getPluginManager().registerEvents(new EntityPlaceListener(), this);
-
-            crystalManager = new CrystalManager();
-
-            newbieProtectionListener = new NewbieProtectionListener();
-            newbieProtectionListener.setEndCrystalListener(endCrystalListener);
-            Bukkit.getPluginManager().registerEvents(newbieProtectionListener, this);
-
-            MasterCombatAPIProvider.register(new MasterCombatAPIBackend(this));
-            Bukkit.getPluginManager().callEvent(new MasterCombatLoadEvent());
-            return;
         }
 
         registerListeners();
@@ -116,13 +111,17 @@ public class Combat extends JavaPlugin implements Listener {
         Metrics metrics = new Metrics(this, pluginId);
 
         endCrystalListener = new EndCrystalListener();
+
         Bukkit.getPluginManager().registerEvents(endCrystalListener, this);
         Bukkit.getPluginManager().registerEvents(new EntityPlaceListener(), this);
+
+        if (getConfig().getBoolean("link-respawn-anchor", true)) {
+            Bukkit.getPluginManager().registerEvents(new RespawnAnchorListener(), this);
+        }
 
         crystalManager = new CrystalManager();
 
         newbieProtectionListener = new NewbieProtectionListener();
-        newbieProtectionListener.setEndCrystalListener(endCrystalListener);
         Bukkit.getPluginManager().registerEvents(newbieProtectionListener, this);
 
         MasterCombatAPIProvider.register(new MasterCombatAPIBackend(this));
@@ -131,11 +130,10 @@ public class Combat extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        if (glowingEnabled) {
-            for (UUID uuid : combatPlayers.keySet()) {
-                removeCombatGlowing(uuid);
-            }
+        if (glowManager != null) {
+            glowManager.cleanup();
         }
+
         combatPlayers.clear();
         combatOpponents.clear();
         lastActionBarSeconds.clear();
@@ -156,13 +154,18 @@ public class Combat extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    @SuppressWarnings("deprecation")
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        
+        // Track player in glow manager
+        if (glowManager != null) {
+            glowManager.trackPlayer(player);
+        }
+        
         if (player.isOp() && getConfig().getBoolean("update-notify-chat", false)) {
             Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
-                String pluginName = getDescription().getName();
-                String currentVersion = getDescription().getVersion();
+                String pluginName = pluginDescription.getName();
+                String currentVersion = pluginDescription.getVersion();
                 String latestVersion = Update.getLatestVersion();
 
                 Bukkit.getScheduler().runTask(this, () -> {
@@ -180,6 +183,55 @@ public class Combat extends JavaPlugin implements Listener {
             });
         }
     }
+    
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        
+        // Untrack player from glow manager
+        if (glowManager != null) {
+            glowManager.untrackPlayer(player);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player victim)) return;
+        if (event.getCause() != EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) return;
+
+        // Find nearby respawn anchor
+        Location location = victim.getLocation();
+        Block anchorBlock = null;
+        for (int x = -1; x <= 1; x++) {
+            for (int y = -1; y <= 1; y++) {
+                for (int z = -1; z <= 1; z++) {
+                    Block block = location.getWorld().getBlockAt(
+                        location.getBlockX() + x,
+                        location.getBlockY() + y,
+                        location.getBlockZ() + z
+                    );
+                    if (block.getType() == Material.RESPAWN_ANCHOR) {
+                        anchorBlock = block;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (anchorBlock == null) return;
+
+        // Get activator
+        UUID anchorId = UUID.nameUUIDFromBytes(anchorBlock.getLocation().toString().getBytes());
+        Player activator = newbieProtectionListener.getAnchorActivator(anchorId);
+        if (activator == null) return;
+
+        // Check protection
+        if (newbieProtectionListener.isActuallyProtected(activator) &&
+            !newbieProtectionListener.isActuallyProtected(victim)) {
+            event.setCancelled(true);
+            newbieProtectionListener.sendBlockedMessage(activator, newbieProtectionListener.getAnchorBlockMessage());
+        }
+    }
 
     private void startCombatTimer() {
         Runnable timerTask = () -> {
@@ -191,17 +243,14 @@ public class Combat extends JavaPlugin implements Listener {
                     combatPlayers.remove(uuid);
                     combatOpponents.remove(uuid);
                     lastActionBarSeconds.remove(uuid);
-                    if (glowingEnabled) setPlayerGlowing(uuid, false);
                     return;
                 }
 
                 if (currentTime >= endTime) {
                     handleCombatEnd(player);
                     lastActionBarSeconds.remove(uuid);
-                    if (glowingEnabled) setPlayerGlowing(uuid, false);
                 } else {
                     updateActionBar(player, endTime, currentTime);
-                    if (glowingEnabled) setPlayerGlowing(uuid, true);
                 }
             });
         };
@@ -227,42 +276,22 @@ public class Combat extends JavaPlugin implements Listener {
         return 60L;
     }
 
-    /**
-     * Remove glowing from a player by UUID, if glowing is enabled.
-     */
-    public void removeCombatGlowing(UUID uuid) {
-        if (!glowingEnabled) return;
-        Player player = Bukkit.getPlayer(uuid);
-        if (player != null && player.isOnline() && player.isGlowing()) {
-            player.setGlowing(false);
-        }
-    }
-
-    /**
-     * Remove glowing from a player instance, if glowing is enabled.
-     */
-    public void removeCombatGlowing(Player player) {
-        if (!glowingEnabled || player == null || !player.isOnline()) return;
-        if (player.isGlowing()) player.setGlowing(false);
-    }
-
-    private void setPlayerGlowing(UUID uuid, boolean glowing) {
-        if (!glowingEnabled) return;
-        Player player = Bukkit.getPlayer(uuid);
-        if (player != null && player.isOnline() && player.isGlowing() != glowing) {
-            player.setGlowing(glowing);
-        }
-    }
-
     private void handleCombatEnd(Player player) {
         UUID playerUUID = player.getUniqueId();
         combatPlayers.remove(playerUUID);
         UUID opponentUUID = combatOpponents.remove(playerUUID);
-        if (opponentUUID != null) {
-            combatOpponents.remove(opponentUUID);
-            if (glowingEnabled) removeCombatGlowing(opponentUUID);
+        
+        // Update glowing status
+        if (glowManager != null) {
+            glowManager.setGlowing(player, false);
+            if (opponentUUID != null) {
+                Player opponent = Bukkit.getPlayer(opponentUUID);
+                if (opponent != null) {
+                    glowManager.setGlowing(opponent, false);
+                }
+            }
         }
-        if (glowingEnabled) removeCombatGlowing(playerUUID);
+        
         sendCombatEndMessage(player);
     }
 
@@ -289,6 +318,10 @@ public class Combat extends JavaPlugin implements Listener {
     }
 
     public void setCombat(Player player, Player opponent) {
+        // Add damage check
+        if (opponent != null && !canDamage(player, opponent)) {
+            return;
+        }
         NewbieProtectionListener protection = getNewbieProtectionListener();
         if (protection != null) {
             if ((player != null && protection.isActuallyProtected(player)) || (opponent != null && protection.isActuallyProtected(opponent))) {
@@ -301,8 +334,7 @@ public class Combat extends JavaPlugin implements Listener {
                 return;
             }
         }
-        if (!combatEnabled || player == null || !isCombatEnabledInWorld(player)) return;
-        if (player == null || shouldBypass(player)) return;
+        if (!combatEnabled || player == null || !isCombatEnabledInWorld(player) || shouldBypass(player)) return;
 
         // Always overwrite both players' expiry timestamps and opponents
         long expiry = System.currentTimeMillis() + (getConfig().getLong("Duration", 0) * 1000L);
@@ -317,17 +349,54 @@ public class Combat extends JavaPlugin implements Listener {
         if (player != null) {
             sendCombatStartMessage(player);
             restrictMovement(player);
-            if (glowingEnabled) setPlayerGlowingIfNeeded(player.getUniqueId(), true);
+            if (glowManager != null) {
+                glowManager.setGlowing(player, true);
+            }
         }
-        if (glowingEnabled && opponent != null) setPlayerGlowingIfNeeded(opponent.getUniqueId(), true);
+        if (opponent != null && glowManager != null) {
+            glowManager.setGlowing(opponent, true);
+        }
     }
 
-    private void setPlayerGlowingIfNeeded(UUID uuid, boolean glowing) {
-        if (!glowingEnabled) return;
-        Player player = Bukkit.getPlayer(uuid);
-        if (player != null && player.isOnline() && player.isGlowing() != glowing) {
-            player.setGlowing(glowing);
+    public boolean canDamage(Player attacker, Player victim) {
+        // Self-combat config check
+        if (attacker.equals(victim) && !getConfig().getBoolean("self-combat", false)) {
+            return false;
         }
+
+        // WorldGuard check
+        if (worldGuardUtil != null && worldGuardUtil.isPvpDenied(attacker)) {
+            return false;
+        }
+
+        // Newbie protection check
+        NewbieProtectionListener protection = getNewbieProtectionListener();
+        if (protection != null) {
+            boolean attackerProtected = protection.isActuallyProtected(attacker);
+            boolean victimProtected = protection.isActuallyProtected(victim);
+
+            // Protected players can't damage non-protected players
+            if (attackerProtected && !victimProtected) return false;
+
+            // Non-protected players can't damage protected players
+            if (!attackerProtected && victimProtected) return false;
+        }
+
+        // SuperVanish check
+        if (superVanishManager != null) {
+            if (superVanishManager.isVanished(attacker) ||
+                superVanishManager.isVanished(victim)) {
+                return false;
+            }
+        }
+
+        // Game mode check
+        if (victim.getGameMode() == GameMode.CREATIVE ||
+            victim.getGameMode() == GameMode.SPECTATOR) {
+            return false;
+        }
+
+        return true;
     }
 
     private boolean shouldBypass(Player player) {
@@ -392,10 +461,8 @@ public class Combat extends JavaPlugin implements Listener {
         List<String> ignoredList = getConfig().getStringList("ignored-projectiles");
         for (String s : ignoredList) ignoredProjectiles.add(s.toUpperCase());
 
-        if (!glowingEnabled) {
-            for (UUID uuid : combatPlayers.keySet()) {
-                removeCombatGlowing(uuid);
-            }
+        if (newbieProtectionListener != null) {
+            newbieProtectionListener.reloadConfig();
         }
     }
 
@@ -413,10 +480,13 @@ public class Combat extends JavaPlugin implements Listener {
         return instance;
     }
 
-    @SuppressWarnings("deprecation")
+    public PluginDescriptionFile getPluginDescription() {
+        return pluginDescription;
+    }
+
     private void sendStartupMessage() {
-        String version = getDescription().getVersion();
-        String pluginName = getDescription().getName();
+        String version = pluginDescription.getVersion();
+        String pluginName = pluginDescription.getName();
 
         String apiType;
         String serverJarName;
@@ -440,6 +510,14 @@ public class Combat extends JavaPlugin implements Listener {
             Bukkit.getConsoleSender().sendMessage("§cINFO §8» §aWorldGuard loaded!");
         } else {
             Bukkit.getConsoleSender().sendMessage("§cINFO §8» §aWorldGuard not loaded!");
+        }
+
+        // PacketEvents check
+        boolean packetEventsLoaded = Bukkit.getPluginManager().getPlugin("PacketEvents") != null;
+        if (packetEventsLoaded) {
+            Bukkit.getConsoleSender().sendMessage("§bINFO §8» §aPacketEvents found, loaded!");
+        } else {
+            Bukkit.getConsoleSender().sendMessage("§bINFO §8» §cPacketEvents NOT found, unloading!");
         }
 
         String asciiArt =
@@ -484,7 +562,30 @@ public class Combat extends JavaPlugin implements Listener {
         return superVanishManager;
     }
 
+    public GlowManager getGlowManager() {
+        if (!glowingEnabled) return null;
+        return glowManager;
+    }
+
     public boolean isCombatEnabled() {
         return combatEnabled;
+    }
+
+    public void notifyPlayerAboutUpdates(Player player) {
+        String pluginName = pluginDescription.getName();
+        String currentVersion = pluginDescription.getVersion();
+        String latestVersion = Update.getLatestVersion();
+
+        if (latestVersion == null) {
+            player.sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
+            return;
+        }
+
+        if (currentVersion.equalsIgnoreCase(latestVersion)) {
+            player.sendMessage("§a[" + pluginName + "]» This server is running the latest version.");
+        } else {
+            player.sendMessage("§e[" + pluginName + "]» Update available! Current: " + currentVersion +
+                               " Latest: " + latestVersion);
+        }
     }
 }

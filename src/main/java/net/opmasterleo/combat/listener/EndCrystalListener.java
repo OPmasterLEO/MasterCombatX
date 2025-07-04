@@ -1,82 +1,72 @@
 package net.opmasterleo.combat.listener;
 
-import java.util.Collection;
-
+import com.github.retrooper.packetevents.event.PacketListener;
+import com.github.retrooper.packetevents.event.PacketReceiveEvent;
+import com.github.retrooper.packetevents.event.PacketSendEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity.InteractAction;
+import net.opmasterleo.combat.Combat;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Player;
 import org.bukkit.entity.EnderCrystal;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.wrappers.EnumWrappers;
-
-import net.opmasterleo.combat.Combat;
-
-public class EndCrystalListener implements Listener {
-    private final ProtocolManager protocolManager;
+public class EndCrystalListener implements Listener, PacketListener {
 
     public EndCrystalListener() {
-        protocolManager = ProtocolLibrary.getProtocolManager();
-        setupPacketListeners();
     }
 
-    private void setupPacketListeners() {
-        protocolManager.addPacketListener(new PacketAdapter(Combat.getInstance(), ListenerPriority.NORMAL, PacketType.Play.Client.USE_ENTITY) {
-            @Override
-            public void onPacketReceiving(PacketEvent event) {
-                if (event.getPacketType() == PacketType.Play.Client.USE_ENTITY) {
-                    final Player player = event.getPlayer();
-                    final int entityId = event.getPacket().getIntegers().read(0);
-                    EnumWrappers.EntityUseAction action = event.getPacket().getEnumEntityUseActions().read(0).getAction();
+    @Override
+    public void onPacketReceive(PacketReceiveEvent event) {
+        if (event.getPacketType() == PacketType.Play.Client.INTERACT_ENTITY) {
+            WrapperPlayClientInteractEntity wrapper = new WrapperPlayClientInteractEntity(event);
+            if (wrapper.getAction() != InteractAction.INTERACT) {
+                return;
+            }
 
-                    if (action != EnumWrappers.EntityUseAction.INTERACT) {
-                        return;
-                    }
+            Player player = (Player) event.getPlayer();
+            if (player == null) return;
 
-                    Bukkit.getScheduler().runTask(Combat.getInstance(), () -> {
-                        Entity entity = getEntityById(player.getWorld(), entityId);
-                        if (entity != null && entity.getType() == EntityType.END_CRYSTAL) {
-                            Combat combat = Combat.getInstance();
-                            NewbieProtectionListener protection = combat.getNewbieProtectionListener();
-                            
-                            boolean shouldBlock = false;
-                            if (protection != null && protection.isActuallyProtected(player)) {
-                                for (Entity nearby : entity.getNearbyEntities(4.0, 4.0, 4.0)) {
-                                    if (nearby instanceof Player target && 
-                                        !player.getUniqueId().equals(target.getUniqueId())) {
-                                        shouldBlock = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            if (shouldBlock && protection != null) {
+            int entityId = wrapper.getEntityId();
+            
+            Bukkit.getScheduler().runTask(Combat.getInstance(), () -> {
+                Entity entity = getEntityById(player.getWorld(), entityId);
+                if (entity != null && entity.getType() == EntityType.END_CRYSTAL) {
+                    Combat combat = Combat.getInstance();
+                    NewbieProtectionListener protection = combat.getNewbieProtectionListener();
+                    
+                    if (protection != null && protection.isActuallyProtected(player)) {
+                        for (Entity nearby : entity.getNearbyEntities(4.0, 4.0, 4.0)) {
+                            if (nearby instanceof Player target && 
+                                !player.getUniqueId().equals(target.getUniqueId()) &&
+                                !protection.isActuallyProtected(target)) {
+                                
                                 event.setCancelled(true);
                                 protection.sendBlockedMessage(player, protection.getCrystalBlockMessage());
                                 return;
                             }
-                            
-                            Combat.getInstance().registerCrystalPlacer(entity, player);
                         }
-                    });
+                    }
+                    
+                    combat.registerCrystalPlacer(entity, player);
                 }
-            }
-        });
+            });
+        }
     }
 
-    private Entity getEntityById(org.bukkit.World world, int id) {
+    @Override
+    public void onPacketSend(PacketSendEvent event) {
+    }
+
+    private Entity getEntityById(World world, int id) {
         for (Entity entity : world.getEntities()) {
             if (entity.getEntityId() == id) return entity;
         }
@@ -108,11 +98,11 @@ public class EndCrystalListener implements Listener {
             NewbieProtectionListener protection = combat.getNewbieProtectionListener();
             
             if (placer != null && protection != null) {
-                if (protection.isActuallyProtected(placer)) {
-                    if (!protection.isActuallyProtected(damagedPlayer)) {
-                        protection.sendBlockedMessage(placer, protection.getCrystalBlockMessage());
-                        return true;
-                    }
+                if (protection.isActuallyProtected(placer) && 
+                    !protection.isActuallyProtected(damagedPlayer)) {
+                    
+                    protection.sendBlockedMessage(placer, protection.getCrystalBlockMessage());
+                    return true;
                 }
             }
             
@@ -141,8 +131,7 @@ public class EndCrystalListener implements Listener {
         World world = crystalLocation.getWorld();
         if (world == null) return;
 
-        Collection<Entity> nearbyEntities = world.getNearbyEntities(crystalLocation, 4.0, 4.0, 4.0);
-        for (Entity entity : nearbyEntities) {
+        for (Entity entity : world.getNearbyEntities(crystalLocation, 4.0, 4.0, 4.0)) {
             if (entity instanceof Player placer) {
                 if (damagedPlayer.equals(placer) && !Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
                     break;

@@ -19,15 +19,27 @@ public class MasterCombatAPIBackend implements MasterCombatAPI {
     public void tagPlayer(UUID uuid) {
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
-            // Tag the player with themselves as the opponent (self-combat)
             plugin.setCombat(player, player);
         }
     }
 
     @Override
     public void untagPlayer(UUID uuid) {
-        plugin.getCombatPlayers().remove(uuid);
-        plugin.getCombatOpponents().remove(uuid);
-        plugin.removeCombatGlowing(uuid);
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) {
+            plugin.getCombatPlayers().remove(uuid);
+            UUID opponentUUID = plugin.getCombatOpponents().remove(uuid);
+            
+            if (plugin.getGlowManager() != null) {
+                plugin.getGlowManager().setGlowing(player, false);
+                
+                if (opponentUUID != null) {
+                    Player opponent = Bukkit.getPlayer(opponentUUID);
+                    if (opponent != null) {
+                        plugin.getGlowManager().setGlowing(opponent, false);
+                    }
+                }
+            }
+        }
     }
 }

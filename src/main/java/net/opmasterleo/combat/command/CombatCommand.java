@@ -15,7 +15,6 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.opmasterleo.combat.Combat;
 import net.opmasterleo.combat.api.MasterCombatAPIProvider;
 import net.opmasterleo.combat.listener.NewbieProtectionListener;
-import net.opmasterleo.combat.manager.PlaceholderManager;
 import net.opmasterleo.combat.manager.Update;
 
 public class CombatCommand implements CommandExecutor, TabCompleter {
@@ -31,25 +30,28 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
 
         Combat combat = Combat.getInstance();
         NewbieProtectionListener protectionListener = combat.getNewbieProtectionListener();
-        String removeProtectCommand = combat.getConfig().getString("NewbieProtection.settings.disableCommand", "removeprotect").toLowerCase();
+        String removeProtectCommand = "removeprotect";
+        if (protectionListener != null && protectionListener.getDisableCommand() != null) {
+            removeProtectCommand = protectionListener.getDisableCommand().toLowerCase();
+        }
 
         String cmdLabel = label.toLowerCase();
         if (cmdLabel.equals("protection")) {
-            if (protectionListener.isActuallyProtected(player)) {
-                protectionListener.sendProtectionLeft(player);
+            if (protectionListener != null && protectionListener.isActuallyProtected(player)) {
+                protectionListener.sendProtectionMessage(player);
             } else {
                 player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
             }
             return true;
         }
         if (cmdLabel.equals(removeProtectCommand)) {
-            if (!protectionListener.isActuallyProtected(player)) {
+            if (protectionListener == null || !protectionListener.isActuallyProtected(player)) {
                 player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
                 return true;
             }
-            String disableMessage = PlaceholderManager.applyPlaceholders(player,
-                    combat.getConfig().getString("NewbieProtection.disableMessage"), 0);
-            player.sendMessage(Component.text(disableMessage));
+            player.sendMessage(Component.text("Are you sure you want to remove your protection? ")
+                    .color(NamedTextColor.YELLOW)
+                    .append(Component.text("Run '/combat confirm' to confirm.").color(NamedTextColor.RED)));
             return true;
         }
 
@@ -61,24 +63,27 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
             switch (args[0].toLowerCase()) {
                 case "removeprotect":
                     if (args[0].equalsIgnoreCase(removeProtectCommand)) {
-                        if (!protectionListener.isActuallyProtected(player)) {
+                        if (protectionListener == null || !protectionListener.isActuallyProtected(player)) {
                             player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
                             return true;
                         }
-                        String disableMessage = PlaceholderManager.applyPlaceholders(player,
-                                combat.getConfig().getString("NewbieProtection.disableMessage"), 0);
-                        player.sendMessage(Component.text(disableMessage));
+                        player.sendMessage(Component.text("Are you sure you want to remove your protection? ")
+                                .color(NamedTextColor.YELLOW)
+                                .append(Component.text("Run '/combat confirm' to confirm.").color(NamedTextColor.RED)));
                         return true;
                     }
                     break;
                 case "confirm":
+                    if (protectionListener == null || !protectionListener.isActuallyProtected(player)) {
+                        player.sendMessage(Component.text("You don't have active protection.").color(NamedTextColor.RED));
+                        return true;
+                    }
                     protectionListener.removeProtection(player);
-                    player.sendMessage(Component.text("PvP protection disabled. You are now vulnerable.").color(NamedTextColor.YELLOW));
                     break;
                 case "reload":
-                    long startTime = System.nanoTime(); // Start timing
+                    long startTime = System.nanoTime();
                     Combat.getInstance().reloadCombatConfig();
-                    long endTime = System.nanoTime(); // End timing
+                    long endTime = System.nanoTime();
                     long durationMs = TimeUnit.NANOSECONDS.toMillis(endTime - startTime);
                     sender.sendMessage(Component.text("Config reloaded in " + durationMs + "ms!").color(NamedTextColor.GREEN));
                     break;
@@ -101,8 +106,8 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
                     Combat plugin = Combat.getInstance();
                     Update.checkForUpdates(plugin);
                     plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                        @SuppressWarnings("deprecation")
-                        String currentVersion = plugin.getDescription().getVersion();
+                        // Use the cached plugin description
+                        String currentVersion = plugin.getPluginDescription().getVersion();
                         String latestVersion = Update.getLatestVersion();
                         updateCheckInProgress = false;
                         if (latestVersion == null) {
@@ -125,8 +130,8 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
                     }
                     break;
                 case "protection":
-                    if (protectionListener.isActuallyProtected(player)) {
-                        protectionListener.sendProtectionLeft(player);
+                    if (protectionListener != null && protectionListener.isActuallyProtected(player)) {
+                        protectionListener.sendProtectionMessage(player);
                     } else {
                         player.sendMessage(Component.text("You are not protected.").color(NamedTextColor.RED));
                     }
@@ -150,7 +155,7 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("/combat update").color(NamedTextColor.GRAY));
         sender.sendMessage(Component.text("/combat api").color(NamedTextColor.GRAY));
         sender.sendMessage(Component.text("/combat " + removeProtectCommand).color(NamedTextColor.GRAY));
-        sender.sendMessage(Component.text("/combat protection").color(NamedTextColor.GRAY)); // add help for /protection
+        sender.sendMessage(Component.text("/combat protection").color(NamedTextColor.GRAY));
     }
 
     @Override

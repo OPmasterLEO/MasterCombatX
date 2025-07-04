@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
 import net.opmasterleo.combat.Combat;
@@ -40,6 +41,19 @@ public class SelfCombatListener implements Listener {
                 Player placer = Combat.getInstance().getCrystalManager().getPlacer(damager);
 
                 if (placer != null && placer.getUniqueId().equals(player.getUniqueId())) {
+                    if (Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
+                        Combat.getInstance().setCombat(player, player);
+                    }
+                    return;
+                }
+            }
+        }
+
+        if (Combat.getInstance().getConfig().getBoolean("link-respawn-anchor", true)) {
+            Entity damager = event.getDamager();
+            if (damager instanceof TNTPrimed tnt && tnt.hasMetadata("respawn_anchor_explosion")) {
+                Object activatorObj = tnt.getMetadata("respawn_anchor_activator").get(0).value();
+                if (activatorObj instanceof Player activator && activator.getUniqueId().equals(player.getUniqueId())) {
                     if (Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
                         Combat.getInstance().setCombat(player, player);
                     }
