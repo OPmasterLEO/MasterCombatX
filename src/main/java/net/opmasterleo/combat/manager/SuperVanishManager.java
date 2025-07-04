@@ -27,10 +27,6 @@ public class SuperVanishManager {
         this.superVanish = Bukkit.getPluginManager().getPlugin("SuperVanish");
     }
 
-    public SuperVanishManager(Plugin plugin) {
-        this.superVanish = Bukkit.getPluginManager().getPlugin("SuperVanish");
-    }
-
     public boolean isVanished(Player player) {
         if (!vanishApiAvailable || superVanish == null || !superVanish.isEnabled() || player == null) {
             return false;

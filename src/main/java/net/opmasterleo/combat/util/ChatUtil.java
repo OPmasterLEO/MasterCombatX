@@ -5,28 +5,32 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 public class ChatUtil {
-    private static final Pattern HEX_PATTERN = Pattern.compile("&#([A-Fa-f0-9]{6})");
-
     public static Component parse(String input) {
         if (input == null || input.isEmpty()) return Component.empty();
 
-        Matcher matcher = HEX_PATTERN.matcher(input);
-        StringBuffer sb = new StringBuffer();
-        while (matcher.find()) {
-            String hex = matcher.group(1);
-            matcher.appendReplacement(sb, "<#" + hex + ">");
-        }
-        matcher.appendTail(sb);
+        String processed = input.replaceAll("&#([0-9A-Fa-f]{6})", "&x&$1");
 
-        return LegacyComponentSerializer.builder()
-                .character('&')
-                .hexColors()
-                .build()
-                .deserialize(sb.toString());
+        StringBuilder hexBuilder = new StringBuilder();
+        for (int i = 0; i < processed.length(); i++) {
+            if (i + 7 < processed.length() &&
+                    processed.charAt(i) == '&' && processed.charAt(i + 1) == 'x' &&
+                            processed.charAt(i + 2) == '&') {
+
+                hexBuilder.append('§').append('x');
+                for (int j = 0; j < 6; j++) {
+                    hexBuilder.append('§').append(processed.charAt(i + 3 + j));
+                }
+                i += 8;
+            } else if (i + 1 < processed.length() && processed.charAt(i) == '&') {
+                hexBuilder.append('§').append(processed.charAt(i + 1));
+                i++;
+            } else {
+                hexBuilder.append(processed.charAt(i));
+            }
+        }
+
+        return LegacyComponentSerializer.legacySection().deserialize(hexBuilder.toString());
     }
 
     public static TextColor getLastColor(Component component) {

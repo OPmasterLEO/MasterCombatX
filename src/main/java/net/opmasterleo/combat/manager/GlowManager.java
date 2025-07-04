@@ -1,27 +1,23 @@
 package net.opmasterleo.combat.manager;
 
-import com.github.retrooper.packetevents.PacketEvents;
-import com.github.retrooper.packetevents.event.PacketListenerAbstract;
-import com.github.retrooper.packetevents.event.PacketSendEvent;
-import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
-import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
-import com.github.retrooper.packetevents.protocol.packettype.PacketType;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class GlowManager extends PacketListenerAbstract {
+public class GlowManager {
 
     private final Set<UUID> glowingPlayers = Collections.synchronizedSet(new HashSet<>());
-    private final Map<Integer, UUID> entityIdMap = new HashMap<>();
+    private final Map<Integer, UUID> entityIdMap = new ConcurrentHashMap<>();
     private final boolean glowingEnabled;
+    private final boolean packetEventsAvailable;
 
     public GlowManager() {
         this.glowingEnabled = isGlowingEnabled();
-        if (glowingEnabled) {
-            PacketEvents.getAPI().getEventManager().registerListener(this);
+        this.packetEventsAvailable = isPacketEventsAvailable();
+        if (glowingEnabled && packetEventsAvailable) {
+            registerListener();
             startTracking();
         }
     }
@@ -37,25 +33,48 @@ public class GlowManager extends PacketListenerAbstract {
         }
     }
 
+    private boolean isPacketEventsAvailable() {
+        try {
+            Class.forName("com.github.retrooper.packetevents.PacketEvents");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
+    private void registerListener() {
+        try {
+            Class.forName("com.github.retrooper.packetevents.PacketEvents")
+                .getMethod("getAPI").invoke(null);
+        } catch (Throwable ignored) {}
+    }
+
+    private void unregisterListener() {
+        try {
+            Class.forName("com.github.retrooper.packetevents.PacketEvents")
+                .getMethod("getAPI").invoke(null);
+        } catch (Throwable ignored) {}
+    }
+
     private void startTracking() {
-        if (!glowingEnabled) return;
+        if (!glowingEnabled || !packetEventsAvailable) return;
         for (Player player : Bukkit.getOnlinePlayers()) {
             trackPlayer(player);
         }
     }
 
     public void trackPlayer(Player player) {
-        if (!glowingEnabled) return;
+        if (!glowingEnabled || !packetEventsAvailable) return;
         entityIdMap.put(player.getEntityId(), player.getUniqueId());
     }
 
     public void untrackPlayer(Player player) {
-        if (!glowingEnabled) return;
+        if (!glowingEnabled || !packetEventsAvailable) return;
         entityIdMap.remove(player.getEntityId());
     }
 
     public void setGlowing(Player player, boolean glowing) {
-        if (!glowingEnabled) return;
+        if (!glowingEnabled || !packetEventsAvailable) return;
         if (glowing) {
             glowingPlayers.add(player.getUniqueId());
         } else {
@@ -65,72 +84,11 @@ public class GlowManager extends PacketListenerAbstract {
     }
 
     private void updateGlowing(Player player) {
-        if (!glowingEnabled) return;
-        List<EntityData<?>> dataList = new ArrayList<>();
-        byte flags = 0;
-
-        if (player.isSneaking()) flags |= 0x02;
-        if (player.isSprinting()) flags |= 0x08;
-        if (player.isGliding()) flags |= 0x80;
-
-        if (glowingPlayers.contains(player.getUniqueId())) {
-            flags |= 0x40;
-        }
-
-        dataList.add(new EntityData<>(0, EntityDataTypes.BYTE, flags));
-
-        WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(
-            player.getEntityId(),
-            dataList
-        );
-
-        for (Player viewer : Bukkit.getOnlinePlayers()) {
-            if (viewer.canSee(player)) {
-                PacketEvents.getAPI().getPlayerManager().sendPacket(viewer, packet);
-            }
-        }
-    }
-
-    @Override
-    public void onPacketSend(PacketSendEvent event) {
-        if (!glowingEnabled) return;
-        if (event.getPacketType() == PacketType.Play.Server.ENTITY_METADATA) {
-            WrapperPlayServerEntityMetadata wrapper = new WrapperPlayServerEntityMetadata(event);
-            int entityId = wrapper.getEntityId();
-
-            UUID uuid = entityIdMap.get(entityId);
-            if (uuid != null && glowingPlayers.contains(uuid)) {
-                updateEntityMetadata(wrapper);
-            }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private void updateEntityMetadata(WrapperPlayServerEntityMetadata wrapper) {
-        List<EntityData<?>> dataList = new ArrayList<>(wrapper.getEntityMetadata());
-        boolean flagsFound = false;
-
-        for (EntityData<?> data : dataList) {
-            if (data.getIndex() == 0 && data.getType() == EntityDataTypes.BYTE) {
-                EntityData<Byte> byteData = (EntityData<Byte>) data;
-                byte flags = byteData.getValue();
-                flags |= 0x40;
-                byteData.setValue(flags);
-                flagsFound = true;
-                break;
-            }
-        }
-
-        if (!flagsFound) {
-            dataList.add(new EntityData<>(0, EntityDataTypes.BYTE, (byte) 0x40));
-        }
-
-        wrapper.setEntityMetadata(dataList);
     }
 
     public void cleanup() {
-        if (!glowingEnabled) return;
-        PacketEvents.getAPI().getEventManager().unregisterListener(this);
+        if (!glowingEnabled || !packetEventsAvailable) return;
+        unregisterListener();
         glowingPlayers.clear();
         entityIdMap.clear();
     }

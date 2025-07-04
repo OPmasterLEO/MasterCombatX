@@ -123,16 +123,15 @@ public class Update {
             connection.setReadTimeout(5000);
 
             if (connection.getResponseCode() == 200) {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    response.append(line);
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    latestVersion = parseVersion(response.toString());
+                    downloadUrl = parseDownloadUrl(response.toString());
                 }
-                reader.close();
-
-                latestVersion = parseVersion(response.toString());
-                downloadUrl = parseDownloadUrl(response.toString());
             } else {
                 Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to check for updates. HTTP Response Code: " + connection.getResponseCode());
             }

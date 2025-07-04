@@ -6,6 +6,8 @@ import net.opmasterleo.combat.Combat;
 import net.opmasterleo.combat.manager.PlaceholderManager;
 import net.opmasterleo.combat.util.ChatUtil;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -26,13 +28,11 @@ public class NewbieProtectionListener implements Listener {
     private final Map<UUID, UUID> anchorActivators = new ConcurrentHashMap<>();
     private long protectionDuration;
     private boolean enabled;
-    
-    // Protection settings
+
     private boolean mobsProtect;
     private String messageType;
     private String disableCommand;
-    
-    // Protection messages
+
     private String msgProtected;
     private String msgDisabled;
     private String msgTriedAttack;
@@ -41,8 +41,7 @@ public class NewbieProtectionListener implements Listener {
     private String crystalBlockMessage;
     private String anchorBlockMessage;
     private String protectionLeftMessage;
-    
-    // Title timing
+
     private int titleFadeIn = 10;
     private int titleStay = 70;
     private int titleFadeOut = 20;
@@ -58,32 +57,33 @@ public class NewbieProtectionListener implements Listener {
 
     private void startExpirationChecker() {
         if (!enabled) return;
-        
+
         Bukkit.getScheduler().runTaskTimer(Combat.getInstance(), () -> {
             long currentTime = System.currentTimeMillis();
             List<UUID> toRemove = new ArrayList<>();
-            
+
             for (Map.Entry<UUID, Long> entry : protectedPlayers.entrySet()) {
                 Player player = Bukkit.getPlayer(entry.getKey());
                 if (player == null) continue;
-                
+
                 if (currentTime >= entry.getValue()) {
                     toRemove.add(entry.getKey());
                     sendProtectionExpired(player);
                 } else {
-                    // Send periodic protection left message
                     if (protectionLeftMessage != null && !protectionLeftMessage.isEmpty()) {
                         long remaining = entry.getValue() - currentTime;
-                        String message = PlaceholderManager.applyPlaceholders(player, protectionLeftMessage, remaining / 1000);
-                        sendMessage(player, message);
+                        if (remaining > 0 && remaining / 1000 % 5 == 0) {
+                            String message = PlaceholderManager.applyPlaceholders(player, protectionLeftMessage, remaining / 1000);
+                            sendMessage(player, message);
+                        }
                     }
                 }
             }
-            
+
             for (UUID playerId : toRemove) {
                 protectedPlayers.remove(playerId);
             }
-        }, 20L, 20L); // Check every second
+        }, 20L, 20L);
     }
 
     @EventHandler
@@ -98,7 +98,6 @@ public class NewbieProtectionListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        // Cleanup if needed
     }
 
     public void addProtectedPlayer(Player player) {
@@ -144,8 +143,6 @@ public class NewbieProtectionListener implements Listener {
 
     private void sendMessage(Player player, String message) {
         if (message == null || message.isEmpty()) return;
-        
-        // Format message with ChatUtil
         Component formatted = ChatUtil.parse(message);
         
         switch (messageType.toLowerCase()) {
@@ -186,9 +183,8 @@ public class NewbieProtectionListener implements Listener {
                 ));
                 break;
             case "none":
-                // Don't send any message
                 break;
-            default: // chat
+            default:
                 player.sendMessage(formatted);
                 break;
         }
@@ -216,22 +212,19 @@ public class NewbieProtectionListener implements Listener {
     public void onEntityDamage(EntityDamageEvent event) {
         if (!enabled) return;
         if (!(event.getEntity() instanceof Player victim)) return;
-        
-        // Handle mob damage if protection is enabled
+
         if (mobsProtect && isActuallyProtected(victim)) {
             if (event instanceof EntityDamageByEntityEvent) {
                 EntityDamageByEntityEvent damageEvent = (EntityDamageByEntityEvent) event;
                 Entity damager = damageEvent.getDamager();
                 
-                // Cancel damage from mobs
                 if (damager instanceof Monster || damager instanceof Animals) {
                     event.setCancelled(true);
                     return;
                 }
             }
         }
-        
-        // Skip if it's not an entity damage event
+
         if (!(event instanceof EntityDamageByEntityEvent)) return;
         
         EntityDamageByEntityEvent damageEvent = (EntityDamageByEntityEvent) event;
@@ -244,8 +237,7 @@ public class NewbieProtectionListener implements Listener {
         }
         
         if (attacker == null) return;
-        
-        // Protected attacker vs unprotected victim
+
         if (isActuallyProtected(attacker) && !isActuallyProtected(victim)) {
             event.setCancelled(true);
             String message = (damageEvent.getDamager() instanceof EnderCrystal) ? 
@@ -253,7 +245,6 @@ public class NewbieProtectionListener implements Listener {
                 msgTriedAttack.replace("%command%", disableCommand);
             sendBlockedMessage(attacker, message);
         } 
-        // Unprotected attacker vs protected victim
         else if (!isActuallyProtected(attacker) && isActuallyProtected(victim)) {
             event.setCancelled(true);
             sendBlockedMessage(attacker, msgAttacker);
@@ -266,13 +257,11 @@ public class NewbieProtectionListener implements Listener {
         protectionDuration = TimeUnit.SECONDS.toMillis(
             combat.getConfig().getLong("NewbieProtection.time", 300)
         );
-        
-        // Load protection settings
+
         mobsProtect = combat.getConfig().getBoolean("NewbieProtection.settings.MobsProtect", false);
         messageType = combat.getConfig().getString("NewbieProtection.settings.MessageType", "actionbar");
         disableCommand = combat.getConfig().getString("NewbieProtection.settings.disableCommand", "removeprotect");
-        
-        // Load messages
+    
         msgProtected = combat.getConfig().getString("NewbieProtection.Messages.protectedMessage", 
             "&aYou are protected from PvP for %time% seconds.");
         msgDisabled = combat.getConfig().getString("NewbieProtection.Messages.DisabledMessage", 
@@ -289,14 +278,12 @@ public class NewbieProtectionListener implements Listener {
             "&cYou cannot attack unprotected players with anchors while protected.");
         protectionLeftMessage = combat.getConfig().getString("NewbieProtection.Messages.ProtectionLeftMessage", 
             "&aProtection Left: %time%");
-        
-        // Load title timing
+
         titleFadeIn = combat.getConfig().getInt("NewbieProtection.settings.TitleFadeIn", 10);
         titleStay = combat.getConfig().getInt("NewbieProtection.settings.TitleStay", 70);
         titleFadeOut = combat.getConfig().getInt("NewbieProtection.settings.TitleFadeOut", 20);
     }
-    
-    // Getters for settings
+
     public boolean isMobsProtect() {
         return mobsProtect;
     }
@@ -307,5 +294,31 @@ public class NewbieProtectionListener implements Listener {
     
     public String getDisableCommand() {
         return disableCommand;
+    }
+
+    public void handleAnchorInteract(Player player, Object hand) {
+        if (!enabled) return;
+
+        if (isActuallyProtected(player)) {
+            Block targetBlock = player.getTargetBlock(null, 5);
+            if (targetBlock != null && targetBlock.getType() == Material.RESPAWN_ANCHOR) {
+                UUID anchorId = UUID.nameUUIDFromBytes(targetBlock.getLocation().toString().getBytes());
+                trackAnchorActivator(anchorId, player);
+            }
+        }
+    }
+
+    public boolean shouldBlockCrystalUse(Player player, Entity crystal) {
+        if (!enabled || !isActuallyProtected(player)) return false;
+
+        for (Entity nearby : crystal.getNearbyEntities(6.0, 6.0, 6.0)) {
+            if (nearby instanceof Player target &&
+                !player.getUniqueId().equals(target.getUniqueId()) &&
+                !isActuallyProtected(target)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }

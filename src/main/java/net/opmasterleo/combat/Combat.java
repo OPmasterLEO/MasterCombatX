@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Objects;
 
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
@@ -22,7 +23,7 @@ import org.bukkit.block.Block;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import com.github.retrooper.packetevents.PacketEvents;
 import net.opmasterleo.combat.api.MasterCombatAPIBackend;
 import net.opmasterleo.combat.api.MasterCombatAPIProvider;
 import net.opmasterleo.combat.api.events.MasterCombatLoadEvent;
@@ -69,6 +70,7 @@ public class Combat extends JavaPlugin implements Listener {
     private long enderPearlDistance;
     private String elytraDisabledMsg;
     private final Set<String> ignoredProjectiles = ConcurrentHashMap.newKeySet();
+    private RespawnAnchorListener respawnAnchorListener;
 
     @Override
     @SuppressWarnings("deprecation")
@@ -79,12 +81,12 @@ public class Combat extends JavaPlugin implements Listener {
 
         combatEnabled = getConfig().getBoolean("combat-enabled", true);
         glowingEnabled = getConfig().getBoolean("CombatTagGlowing.Enabled", false);
-        this.superVanishManager = new SuperVanishManager(this);
+        this.superVanishManager = new SuperVanishManager(); // FIX: Use no-arg constructor
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
             worldGuardUtil = new WorldGuardUtil();
         }
         this.crystalManager = new CrystalManager();
-        
+
         // Initialize GlowManager if glowing is enabled
         if (glowingEnabled) {
             this.glowManager = new GlowManager();
@@ -93,8 +95,8 @@ public class Combat extends JavaPlugin implements Listener {
         }
 
         // Register main and protection commands
-        getCommand("combat").setExecutor(new CombatCommand());
-        getCommand("protection").setExecutor(new CombatCommand());
+        Objects.requireNonNull(getCommand("combat")).setExecutor(new CombatCommand());
+        Objects.requireNonNull(getCommand("protection")).setExecutor(new CombatCommand());
         String disableCmd = getConfig().getString("NewbieProtection.settings.disableCommand", "removeprotect").toLowerCase();
         if (getCommand(disableCmd) != null) {
             getCommand(disableCmd).setExecutor(new CombatCommand());
@@ -111,21 +113,24 @@ public class Combat extends JavaPlugin implements Listener {
         Metrics metrics = new Metrics(this, pluginId);
 
         endCrystalListener = new EndCrystalListener();
-
         Bukkit.getPluginManager().registerEvents(endCrystalListener, this);
         Bukkit.getPluginManager().registerEvents(new EntityPlaceListener(), this);
 
         if (getConfig().getBoolean("link-respawn-anchor", true)) {
-            Bukkit.getPluginManager().registerEvents(new RespawnAnchorListener(), this);
+            respawnAnchorListener = new RespawnAnchorListener();
+            Bukkit.getPluginManager().registerEvents(respawnAnchorListener, this);
         }
-
-        crystalManager = new CrystalManager();
 
         newbieProtectionListener = new NewbieProtectionListener();
         Bukkit.getPluginManager().registerEvents(newbieProtectionListener, this);
 
         MasterCombatAPIProvider.register(new MasterCombatAPIBackend(this));
         Bukkit.getPluginManager().callEvent(new MasterCombatLoadEvent());
+
+        // Add after plugin initialization
+        if (isPacketEventsAvailable()) {
+            PacketEvents.getAPI().getEventManager().registerListener(new net.opmasterleo.combat.handler.PacketHandler(this));
+        }
     }
 
     @Override
@@ -435,9 +440,9 @@ public class Combat extends JavaPlugin implements Listener {
     public String getMessage(String key) {
         String message = getConfig().getString(key, "");
         if (message == null) message = "";
-        return LegacyComponentSerializer.legacySection().serialize(
-            LegacyComponentSerializer.legacy('&').deserialize(message)
-        );
+        // Convert the Component to a legacy string for compatibility
+        return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+            .serialize(net.opmasterleo.combat.util.ChatUtil.parse(message));
     }
 
     public void reloadCombatConfig() {
@@ -457,9 +462,15 @@ public class Combat extends JavaPlugin implements Listener {
         if (elytraDisabledMsg == null || elytraDisabledMsg.isEmpty()) {
             elytraDisabledMsg = "§cElytra usage is disabled while in combat.";
         }
+        
+        // Clear and reload ignored projectiles
         ignoredProjectiles.clear();
         List<String> ignoredList = getConfig().getStringList("ignored-projectiles");
-        for (String s : ignoredList) ignoredProjectiles.add(s.toUpperCase());
+        for (String s : ignoredList) {
+            String projName = s.toUpperCase();
+            ignoredProjectiles.add(projName);
+            // Keep startup logging but remove the individual projectile logs
+        }
 
         if (newbieProtectionListener != null) {
             newbieProtectionListener.reloadConfig();
@@ -527,8 +538,9 @@ public class Combat extends JavaPlugin implements Listener {
             "&b | |__| (_) | | | | | | |_) | (_| | |_    Currently using " + apiType + " - " + serverJarName + "\n" +
             "&b  \\____\\___/|_| |_| |_|_.__/ \\__,_|\\__|   \n";
 
+        // FIX: Use ChatUtil.parse for color parsing instead of LegacyComponentSerializer
         for (String line : asciiArt.split("\n")) {
-            Bukkit.getConsoleSender().sendMessage(LegacyComponentSerializer.legacy('&').deserialize(line));
+            Bukkit.getConsoleSender().sendMessage(net.opmasterleo.combat.util.ChatUtil.parse(line));
         }
     }
 
@@ -586,6 +598,42 @@ public class Combat extends JavaPlugin implements Listener {
         } else {
             player.sendMessage("§e[" + pluginName + "]» Update available! Current: " + currentVersion +
                                " Latest: " + latestVersion);
+        }
+    }
+
+    private boolean isPacketEventsAvailable() {
+        return Bukkit.getPluginManager().getPlugin("PacketEvents") != null;
+    }
+
+    public RespawnAnchorListener getRespawnAnchorListener() {
+        return respawnAnchorListener;
+    }
+
+    public void forceSetCombat(Player player, Player opponent) {
+        // Skip protection checks - just set combat
+        if (!combatEnabled || player == null || !isCombatEnabledInWorld(player) || shouldBypass(player)) return;
+
+        // Set combat tags forcefully
+        long expiry = System.currentTimeMillis() + (getConfig().getLong("Duration", 0) * 1000L);
+        if (player != null) {
+            combatOpponents.put(player.getUniqueId(), opponent != null ? opponent.getUniqueId() : null);
+            combatPlayers.put(player.getUniqueId(), expiry);
+        }
+        if (opponent != null && !opponent.equals(player)) {
+            combatOpponents.put(opponent.getUniqueId(), player != null ? player.getUniqueId() : null);
+            combatPlayers.put(opponent.getUniqueId(), expiry);
+        }
+        
+        // Apply visual effects
+        if (player != null) {
+            sendCombatStartMessage(player);
+            restrictMovement(player);
+            if (glowManager != null) {
+                glowManager.setGlowing(player, true);
+            }
+        }
+        if (opponent != null && glowManager != null) {
+            glowManager.setGlowing(opponent, true);
         }
     }
 }

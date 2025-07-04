@@ -26,7 +26,16 @@ public final class EntityDamageByEntityListener implements Listener {
 
         Entity damager = event.getDamager();
         
-        // Resolve the actual player responsible for damage (for vanish checks)
+        if (damager instanceof Projectile projectile && projectile.getType() == EntityType.ENDER_PEARL) {
+            return;
+        }
+        
+        if (damager instanceof Projectile projectile) {
+            if (isIgnoredProjectile(combat, projectile)) {
+                return;
+            }
+        }
+
         Player damagerPlayer = null;
         if (damager instanceof Player p) {
             damagerPlayer = p;
@@ -41,8 +50,7 @@ public final class EntityDamageByEntityListener implements Listener {
         } else if (damager.getType() == EntityType.END_CRYSTAL && combat.getCrystalManager() != null) {
             damagerPlayer = combat.getCrystalManager().getPlacer(damager);
         }
-        
-        // SuperVanish handling
+
         SuperVanishManager vanish = combat.getSuperVanishManager();
         if (vanish != null) {
             boolean victimVanished = vanish.isVanished(player);
@@ -53,17 +61,7 @@ public final class EntityDamageByEntityListener implements Listener {
                 return;
             }
         }
-        
-        // Universal ignored projectiles check
-        if (damager instanceof Projectile) {
-            Set<String> ignoredProjectiles = combat.getIgnoredProjectiles();
-            String projType = ((Projectile) damager).getType().name().toUpperCase();
-            if (ignoredProjectiles.contains(projType)) {
-                return; // Always skip ignored projectiles
-            }
-        }
-        
-        // Respawn Anchor handling
+
         boolean linkRespawnAnchors = combat.getConfig().getBoolean("link-respawn-anchor", true);
         if (linkRespawnAnchors && damager.getType() == EntityType.TNT) {
             if (damager.hasMetadata("respawn_anchor_explosion")) {
@@ -82,7 +80,6 @@ public final class EntityDamageByEntityListener implements Listener {
             }
         }
 
-        // Player damage handling
         if (damager instanceof Player damagerP) {
             if (damagerP.getUniqueId().equals(player.getUniqueId())) {
                 if (combat.getConfig().getBoolean("self-combat", false)) {
@@ -95,7 +92,6 @@ public final class EntityDamageByEntityListener implements Listener {
             return;
         }
 
-        // Projectile handling
         if (damager instanceof Projectile projectile) {
             boolean linkProjectiles = combat.getConfig().getBoolean("link-projectiles", true);
             boolean selfCombat = combat.getConfig().getBoolean("self-combat", false);
@@ -107,16 +103,12 @@ public final class EntityDamageByEntityListener implements Listener {
                         combat.setCombat(player, player);
                     }
                 } else {
-                    Set<String> ignoredProjectiles = combat.getIgnoredProjectiles();
-                    if (ignoredProjectiles.contains(projectile.getType().name().toUpperCase())) return;
-
                     combat.setCombat(player, shooter);
                     combat.setCombat(shooter, player);
                 }
             }
         }
 
-        // End Crystal handling
         if (combat.getConfig().getBoolean("link-end-crystals", true) && damager.getType() == EntityType.END_CRYSTAL) {
             Player placer = combat.getCrystalManager() != null ? 
                 combat.getCrystalManager().getPlacer(damager) : null;
@@ -132,7 +124,6 @@ public final class EntityDamageByEntityListener implements Listener {
             return;
         }
 
-        // Pet handling
         if (combat.getConfig().getBoolean("link-pets", true) && damager instanceof Tameable tameable) {
             if (tameable.getOwner() instanceof Player owner) {
                 if (owner.getUniqueId().equals(player.getUniqueId())) return;
@@ -142,7 +133,6 @@ public final class EntityDamageByEntityListener implements Listener {
             return;
         }
 
-        // Fishing Rod handling
         if (combat.getConfig().getBoolean("link-fishing-rod", true) && damager instanceof FishHook fishHook) {
             if (fishHook.getShooter() instanceof Player shooter) {
                 if (shooter.getUniqueId().equals(player.getUniqueId())) return;
@@ -152,7 +142,6 @@ public final class EntityDamageByEntityListener implements Listener {
             return;
         }
 
-        // TNT handling
         if (combat.getConfig().getBoolean("link-tnt", true) && damager instanceof TNTPrimed tnt) {
             if (tnt.getSource() instanceof Player source) {
                 if (source.getUniqueId().equals(player.getUniqueId())) {
@@ -165,5 +154,15 @@ public final class EntityDamageByEntityListener implements Listener {
                 }
             }
         }
+    }
+    
+    private boolean isIgnoredProjectile(Combat combat, Projectile projectile) {
+        if (projectile.getType() == EntityType.ENDER_PEARL) {
+            return true;
+        }
+
+        String projType = projectile.getType().name().toUpperCase();
+        Set<String> ignoredProjectiles = combat.getIgnoredProjectiles();
+        return ignoredProjectiles != null && ignoredProjectiles.contains(projType);
     }
 }

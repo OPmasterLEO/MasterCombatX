@@ -4,9 +4,7 @@ import net.opmasterleo.combat.Combat;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
@@ -16,120 +14,162 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 
-import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RespawnAnchorListener implements Listener {
 
-    private final Set<UUID> recentExplosions = new HashSet<>();
+    private static final Map<String, UUID> anchorActivatorMap = new ConcurrentHashMap<>();
+    private final Set<UUID> recentExplosions = ConcurrentHashMap.newKeySet();
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
+        if (!isRespawnAnchorCombatEnabled()) return;
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         Block block = event.getClickedBlock();
         if (block == null || block.getType() != Material.RESPAWN_ANCHOR) return;
-        if (event.getItem() == null || event.getItem().getType() != Material.GLOWSTONE) return;
 
         Player player = event.getPlayer();
-        Combat combat = Combat.getInstance();
-        UUID anchorId = UUID.nameUUIDFromBytes(block.getLocation().toString().getBytes());
-        combat.getNewbieProtectionListener().trackAnchorActivator(anchorId, player);
+        String locationKey = getLocationKey(block.getLocation());
+
+        ItemStack item = event.getItem();
+        boolean isDetonation = item == null || item.getType() != Material.GLOWSTONE;
+
+        anchorActivatorMap.put(locationKey, player.getUniqueId());
+
+        if (isDetonation) {
+            block.setMetadata("anchor_activator", new FixedMetadataValue(Combat.getInstance(), player.getUniqueId()));
+        }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onEntityDamage(EntityDamageEvent event) {
-        if (!(event.getEntity() instanceof Player)) return;
-        Player player = (Player) event.getEntity();
-        if (event.getCause() != DamageCause.BLOCK_EXPLOSION) return;
+    public void trackAnchorInteraction(Block block, Player player) {
+        if (!isRespawnAnchorCombatEnabled()) return;
+        if (block == null || block.getType() != Material.RESPAWN_ANCHOR) return;
+
+        String locationKey = getLocationKey(block.getLocation());
+        anchorActivatorMap.put(locationKey, player.getUniqueId());
         
-        Combat combat = Combat.getInstance();
-        if (!combat.getConfig().getBoolean("link-respawn-anchor", true)) return;
-        
-        // Find nearby respawn anchor
-        Location location = player.getLocation();
-        Block anchorBlock = findNearbyAnchorBlock(location);
-        if (anchorBlock == null) return;
-
-        // Get activator
-        UUID anchorId = UUID.nameUUIDFromBytes(anchorBlock.getLocation().toString().getBytes());
-        Player activator = combat.getNewbieProtectionListener().getAnchorActivator(anchorId);
-        if (activator == null) return;
-
-        // Track this explosion to prevent double-triggering
-        UUID explosionId = UUID.nameUUIDFromBytes(("explosion-" + anchorId.toString()).getBytes());
-        if (recentExplosions.contains(explosionId)) return;
-        recentExplosions.add(explosionId);
-        
-        // Schedule removal of explosion tracking
-        Bukkit.getScheduler().runTaskLater(combat, () -> recentExplosions.remove(explosionId), 20);
-
-        // Tag nearby TNT entities with metadata
-        for (Entity entity : player.getWorld().getNearbyEntities(location, 10, 10, 10)) {
-            if (entity instanceof TNTPrimed tnt) {
-                tnt.setMetadata("respawn_anchor_explosion", new FixedMetadataValue(combat, true));
-                tnt.setMetadata("respawn_anchor_activator", new FixedMetadataValue(combat, activator));
-            }
-        }
-
-        // Handle damage
-        handleRespawnAnchorExplosionDamage(player, activator);
+        block.setMetadata("anchor_activator", new FixedMetadataValue(Combat.getInstance(), player.getUniqueId()));
     }
     
-    // Fixed handler for entity-triggered explosions
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        if (!(event.getEntity() instanceof Player)) return;
-        if (event.getCause() != DamageCause.ENTITY_EXPLOSION) return;
-
-        Entity damager = event.getDamager();
-        if (!(damager instanceof TNTPrimed tnt)) return;
-        if (!tnt.hasMetadata("respawn_anchor_explosion")) return;
-
-        // Get activator from TNT metadata
-        Player activator = (Player) tnt.getMetadata("respawn_anchor_activator").get(0).value();
-        if (activator == null) return;
-
-        Player player = (Player) event.getEntity();
-        UUID explosionId = tnt.getUniqueId();
-        
-        // Prevent double processing
-        if (recentExplosions.contains(explosionId)) return;
-        recentExplosions.add(explosionId);
-        Bukkit.getScheduler().runTaskLater(Combat.getInstance(), 
-            () -> recentExplosions.remove(explosionId), 20);
-
-        // Handle damage
-        handleRespawnAnchorExplosionDamage(player, activator);
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityExplode(EntityExplodeEvent event) {
+        Location explodeLocation = event.getLocation();
+        for (String locationKey : anchorActivatorMap.keySet()) {
+            if (locationMatches(locationKey, explodeLocation)) {
+                UUID activatorUUID = anchorActivatorMap.get(locationKey);
+                Player activator = Bukkit.getPlayer(activatorUUID);
+                
+                if (activator != null) {
+                    TNTPrimed tnt = explodeLocation.getWorld().spawn(explodeLocation, TNTPrimed.class);
+                    tnt.setMetadata("respawn_anchor_explosion", new FixedMetadataValue(Combat.getInstance(), true));
+                    tnt.setMetadata("respawn_anchor_activator", new FixedMetadataValue(Combat.getInstance(), activator));
+                }
+                break;
+            }
+        }
     }
 
-    private void handleRespawnAnchorExplosionDamage(Player player, Player activator) {
-        Combat combat = Combat.getInstance();
-        if (player.equals(activator)) {
-            // Self-damage handling
-            if (combat.getConfig().getBoolean("self-combat", false)) {
-                combat.setCombat(activator, activator);
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (!isRespawnAnchorCombatEnabled()) return;
+        if (!(event.getEntity() instanceof Player victim)) return;
+        
+        if (event.getCause() == DamageCause.ENTITY_EXPLOSION || 
+            event.getCause() == DamageCause.BLOCK_EXPLOSION) {
+
+            if (event.getDamager() instanceof TNTPrimed tnt && 
+                tnt.hasMetadata("respawn_anchor_explosion")) {
+                
+                if (tnt.hasMetadata("respawn_anchor_activator")) {
+                    Object activatorObj = tnt.getMetadata("respawn_anchor_activator").get(0).value();
+                    if (activatorObj instanceof Player activator) {
+                        processCombat(activator, victim);
+                        return;
+                    }
+                }
             }
+
+            Block anchorBlock = findNearbyAnchorBlock(victim.getLocation());
+            if (anchorBlock == null) return;
+
+            if (anchorBlock.hasMetadata("anchor_activator")) {
+                Object activatorObj = anchorBlock.getMetadata("anchor_activator").get(0).value();
+                if (activatorObj instanceof UUID activatorUUID) {
+                    Player activator = Bukkit.getPlayer(activatorUUID);
+                    if (activator != null) {
+                        processCombat(activator, victim);
+                        return;
+                    }
+                }
+            }
+
+            String locationKey = getLocationKey(anchorBlock.getLocation());
+            UUID activatorUUID = anchorActivatorMap.get(locationKey);
+            if (activatorUUID == null) return;
+            
+            Player activator = Bukkit.getPlayer(activatorUUID);
+            if (activator == null) return;
+            
+            processCombat(activator, victim);
+        }
+    }
+    
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player victim)) return;
+        if (event.getCause() != EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) return;
+
+        Block anchorBlock = findNearbyAnchorBlock(victim.getLocation());
+        if (anchorBlock == null) return;
+        
+        if (anchorBlock.hasMetadata("anchor_activator")) {
+            Object activatorObj = anchorBlock.getMetadata("anchor_activator").get(0).value();
+            if (activatorObj instanceof UUID activatorUUID) {
+                Player activator = Bukkit.getPlayer(activatorUUID);
+                if (activator != null) {
+                    processCombat(activator, victim);
+                }
+            }
+        }
+    }
+    
+    private void processCombat(Player activator, Player victim) {
+        Combat plugin = Combat.getInstance();
+
+        UUID explosionId = UUID.randomUUID();
+        if (!recentExplosions.add(explosionId)) return;
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            recentExplosions.remove(explosionId);
+        }, 20);
+
+        boolean isSelfDamage = activator.getUniqueId().equals(victim.getUniqueId());
+        boolean selfCombatEnabled = plugin.getConfig().getBoolean("self-combat", false);
+        
+        if (isSelfDamage && selfCombatEnabled) {
+            plugin.forceSetCombat(activator, activator);
+        } else if (isSelfDamage) {
+            return;
         } else {
-            // Damage to other players
-            if (combat.canDamage(activator, player)) {
-                combat.setCombat(activator, player);
-            }
+            plugin.forceSetCombat(activator, victim);
+            plugin.forceSetCombat(victim, activator);
         }
     }
 
     private Block findNearbyAnchorBlock(Location location) {
-        World world = location.getWorld();
-        if (world == null) return null;
-
-        // Expand search radius to 5x5x5 to account for explosion knockback
+        if (location == null || location.getWorld() == null) return null;
         for (int x = -2; x <= 2; x++) {
             for (int y = -2; y <= 2; y++) {
                 for (int z = -2; z <= 2; z++) {
-                    Block block = world.getBlockAt(
+                    Block block = location.getWorld().getBlockAt(
                         location.getBlockX() + x,
                         location.getBlockY() + y,
                         location.getBlockZ() + z
@@ -141,5 +181,22 @@ public class RespawnAnchorListener implements Listener {
             }
         }
         return null;
+    }
+
+    private String getLocationKey(Location location) {
+        return location.getWorld().getName() + ":" + 
+               location.getBlockX() + "," + 
+               location.getBlockY() + "," + 
+               location.getBlockZ();
+    }
+    
+    private boolean locationMatches(String locationKey, Location location) {
+        String checkKey = getLocationKey(location);
+        return locationKey.equals(checkKey);
+    }
+
+    private boolean isRespawnAnchorCombatEnabled() {
+        Combat combat = Combat.getInstance();
+        return combat.isCombatEnabled() && combat.getConfig().getBoolean("link-respawn-anchor", true);
     }
 }

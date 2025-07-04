@@ -7,7 +7,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.entity.EntityType;
 
+import java.util.Set;
 import net.opmasterleo.combat.Combat;
 
 public class SelfCombatListener implements Listener {
@@ -17,20 +19,31 @@ public class SelfCombatListener implements Listener {
         if (event.isCancelled()) return;
         if (!(event.getEntity() instanceof Player player)) return;
 
-        if (event.getDamager() instanceof Player damager && damager.getUniqueId().equals(player.getUniqueId())) {
-            if (Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
-                Combat.getInstance().setCombat(player, player);
-            }
+        Combat combat = Combat.getInstance();
+
+        if (event.getDamager() instanceof Projectile projectile && 
+            projectile.getType() == EntityType.ENDER_PEARL) {
             return;
         }
-
-        if (event.getDamager() instanceof Projectile projectile && projectile.getShooter() instanceof Player shooter) {
-            if (shooter.getUniqueId().equals(player.getUniqueId())) {
-                if (Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
-                    Combat.getInstance().setCombat(player, player);
+        
+        if (event.getDamager() instanceof Projectile projectile) {
+            if (isIgnoredProjectile(combat, projectile)) {
+                return;
+            }
+            
+            if (projectile.getShooter() instanceof Player shooter && shooter.getUniqueId().equals(player.getUniqueId())) {
+                if (combat.getConfig().getBoolean("self-combat", false)) {
+                    combat.setCombat(player, player);
                 }
                 return;
             }
+        }
+
+        if (event.getDamager() instanceof Player damager && damager.getUniqueId().equals(player.getUniqueId())) {
+            if (combat.getConfig().getBoolean("self-combat", false)) {
+                combat.setCombat(player, player);
+            }
+            return;
         }
 
         if (Combat.getInstance().getConfig().getBoolean("link-tnt", true)) {
@@ -69,5 +82,15 @@ public class SelfCombatListener implements Listener {
                 }
             }
         }
+    }
+
+    private boolean isIgnoredProjectile(Combat combat, Projectile projectile) {
+        if (projectile.getType() == EntityType.ENDER_PEARL) {
+            return true;
+        }
+        
+        String projType = projectile.getType().name().toUpperCase();
+        Set<String> ignoredProjectiles = combat.getIgnoredProjectiles();
+        return ignoredProjectiles != null && ignoredProjectiles.contains(projType);
     }
 }
