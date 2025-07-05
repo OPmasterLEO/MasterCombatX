@@ -368,4 +368,21 @@ public class NewbieProtectionListener implements Listener {
         
         return false;
     }
+
+    public String getAttackerMessage() {
+        return msgAttacker;
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onIntentionalGameDesignDamage(EntityDamageEvent event) {
+        if (!enabled) return;
+        if (!(event.getEntity() instanceof Player victim)) return;
+        if (isActuallyProtected(victim)) {
+            if (event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION ||
+                event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
 }

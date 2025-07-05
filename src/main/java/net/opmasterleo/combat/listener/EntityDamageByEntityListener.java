@@ -33,6 +33,15 @@ public final class EntityDamageByEntityListener implements Listener {
             if (damagerPlayer.getGameMode() == GameMode.CREATIVE || damagerPlayer.getGameMode() == GameMode.SPECTATOR) {
                 return;
             }
+
+            NewbieProtectionListener protectionListener = combat.getNewbieProtectionListener();
+            if (protectionListener != null) {
+                boolean damagerProtected = protectionListener.isActuallyProtected(damagerPlayer);
+                boolean victimProtected = protectionListener.isActuallyProtected(player);
+                if ((damagerProtected && !victimProtected) || (!damagerProtected && victimProtected)) {
+                    return;
+                }
+            }
         }
         
         if (damager instanceof Projectile projectile && projectile.getType() == EntityType.ENDER_PEARL) {

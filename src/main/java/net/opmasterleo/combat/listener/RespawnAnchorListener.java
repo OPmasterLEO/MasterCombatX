@@ -8,6 +8,7 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.type.RespawnAnchor;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -46,28 +47,71 @@ public class RespawnAnchorListener implements Listener {
         if (event.getHand() != EquipmentSlot.HAND) return;
 
         Block block = event.getClickedBlock();
-        if (block == null || block.getType() != Material.RESPAWN_ANCHOR) return;
+        if (block == null) return;
+        Material blockType = block.getType();
+        boolean isAnchor = blockType == Material.RESPAWN_ANCHOR;
+        boolean isBed = blockType.name().endsWith("_BED");
+        
+        if (!isAnchor && !isBed) return;
 
         Player player = event.getPlayer();
         if (shouldBypass(player)) return;
-        anchorActivators.put(block, player.getUniqueId());
-        block.setMetadata("anchor_activator_uuid", 
-            new FixedMetadataValue(plugin, player.getUniqueId()));
+        
+        Combat combat = Combat.getInstance();
+        NewbieProtectionListener protectionListener = combat.getNewbieProtectionListener();
+        if (protectionListener != null && protectionListener.isActuallyProtected(player)) {
+            boolean isDangerousDimension = false;
+            
+            if (isAnchor && player.getWorld().getEnvironment() != org.bukkit.World.Environment.NETHER) {
+                isDangerousDimension = true;
+            }
+            
+            if (isBed && (player.getWorld().getEnvironment() == org.bukkit.World.Environment.NETHER || 
+                          player.getWorld().getEnvironment() == org.bukkit.World.Environment.THE_END)) {
+                isDangerousDimension = true;
+            }
 
-        BlockData data = block.getBlockData();
-        if (data instanceof RespawnAnchor anchor && 
-            anchor.getCharges() > 0 && 
-            !player.getInventory().getItemInMainHand().getType().equals(Material.GLOWSTONE)) {
-            if (plugin.getConfig().getBoolean("self-combat", false)) {
-                plugin.directSetCombat(player, player);
+            if (isDangerousDimension) {
+                for (Entity nearby : player.getNearbyEntities(6.0, 6.0, 6.0)) {
+                    if (nearby instanceof Player target && !player.getUniqueId().equals(target.getUniqueId())) {
+                        event.setCancelled(true);
+                        protectionListener.sendBlockedMessage(player, protectionListener.getAnchorBlockMessage());
+                        return;
+                    }
+                }
+            }
+        }
+
+        if (isAnchor) {
+            anchorActivators.put(block, player.getUniqueId());
+            block.setMetadata("anchor_activator_uuid", 
+                new FixedMetadataValue(plugin, player.getUniqueId()));
+
+            BlockData data = block.getBlockData();
+            if (data instanceof RespawnAnchor anchor && 
+                anchor.getCharges() > 0 && 
+                !player.getInventory().getItemInMainHand().getType().equals(Material.GLOWSTONE)) {
+                if (plugin.getConfig().getBoolean("self-combat", false)) {
+                    plugin.directSetCombat(player, player);
+                }
             }
         }
     }
 
-    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
         if (!isEnabled()) return;
         if (!(event.getEntity() instanceof Player victim)) return;
+        
+        NewbieProtectionListener protectionListener = Combat.getInstance().getNewbieProtectionListener();
+        if (protectionListener != null && protectionListener.isActuallyProtected(victim)) {
+            if (event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION ||
+                event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+
         if (shouldBypass(victim)) return;
         if (event.getCause() != DamageCause.BLOCK_EXPLOSION && 
             event.getCause() != DamageCause.ENTITY_EXPLOSION) {
