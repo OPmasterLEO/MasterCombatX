@@ -22,8 +22,8 @@ commands:
     usage: /protection
     permission: combat.protection
     permission-message: You do not have permission to use this command.
-  removeprotect:
+  ${settings.disableCommand}:
     description: Disable your newbie PvP protection.
-    usage: /removeprotect
+    usage: /${settings.disableCommand}
     permission: combat.protection
     permission-message: You do not have permission to use this command.

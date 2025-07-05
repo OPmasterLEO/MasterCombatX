@@ -12,7 +12,7 @@ import net.opmasterleo.combat.Combat;
 public final class CrystalManager {
     private final Map<Integer, UUID> crystalEntityMap = new ConcurrentHashMap<>(2048);
     private final Map<Integer, Long> expiryTimes = new ConcurrentHashMap<>(2048);
-    private static final long CRYSTAL_TTL = 300000; // 5 minutes
+    private static final long CRYSTAL_TTL = 300000;
     private long lastCleanupTime = System.currentTimeMillis();
 
     public CrystalManager() {

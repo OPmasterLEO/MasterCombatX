@@ -137,7 +137,6 @@ public class PacketHandler extends PacketListenerAbstract {
     }
 
     private void handleItemUse(PacketReceiveEvent event, Player player) {
-        // Get item in hand directly - no need for wrapper variable
         ItemStack mainHandItem = player.getInventory().getItemInMainHand();
         if (mainHandItem.getType() != Material.GLOWSTONE) return;
         
@@ -145,12 +144,10 @@ public class PacketHandler extends PacketListenerAbstract {
         if (targetBlock != null && targetBlock.getType() == Material.RESPAWN_ANCHOR) {
             if (plugin.getRespawnAnchorListener() != null) {
                 plugin.getRespawnAnchorListener().trackAnchorInteraction(targetBlock, player);
-                
-                // Always register potential explosion, regardless of world
+
                 if (plugin.getConfig().getBoolean("self-combat", false)) {
                     plugin.getRespawnAnchorListener().registerPotentialExplosion(targetBlock.getLocation(), player);
-                    
-                    // Additionally, mark this player for potential self-combat from explosion
+
                     if (!plugin.isInCombat(player)) {
                         plugin.getRespawnAnchorListener().registerPotentialExplosion(player.getLocation(), player);
                     }

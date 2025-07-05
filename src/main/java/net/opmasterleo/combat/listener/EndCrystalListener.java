@@ -12,15 +12,7 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 public class EndCrystalListener implements Listener {
-
-    // Anti-fast-crystal: minimum tick interval between full-strength hits per player
-    private static final long CRYSTAL_HIT_COOLDOWN_MS = 200; // 10 ticks (0.2s)
-    private final Map<UUID, Long> lastCrystalHit = new ConcurrentHashMap<>();
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
@@ -31,10 +23,8 @@ public class EndCrystalListener implements Listener {
         Combat combat = Combat.getInstance();
         NewbieProtectionListener protection = combat.getNewbieProtectionListener();
 
-        // Register player as the crystal placer immediately
         combat.getCrystalManager().setPlacer(crystal, player);
 
-        // Check for newbie protection conflicts
         if (protection != null && protection.isActuallyProtected(player)) {
             for (Entity nearby : crystal.getNearbyEntities(6.0, 6.0, 6.0)) {
                 if (nearby instanceof Player target
@@ -47,7 +37,6 @@ public class EndCrystalListener implements Listener {
             }
         }
 
-        // Only apply self-combat if enabled
         if (combat.getConfig().getBoolean("self-combat", false)) {
             combat.directSetCombat(player, player);
         }
@@ -59,19 +48,9 @@ public class EndCrystalListener implements Listener {
 
         Entity damager = event.getDamager();
         if (damager.getType() != EntityType.END_CRYSTAL) return;
-        
-        // Handle crystal cooldown (anti-fast-crystal)
+
         Player placer = Combat.getInstance().getCrystalManager().getPlacer(damager);
         if (placer != null && !shouldBypass(placer)) {
-            long now = System.currentTimeMillis();
-            Long last = lastCrystalHit.get(placer.getUniqueId());
-            if (last != null && now - last < CRYSTAL_HIT_COOLDOWN_MS) {
-                event.setCancelled(true);
-                return;
-            }
-            lastCrystalHit.put(placer.getUniqueId(), now);
-        
-            // Only tag players when they ACTUALLY take damage
             if (event.getEntity() instanceof Player victim && !shouldBypass(victim) && event.getFinalDamage() > 0) {
                 boolean selfCombat = Combat.getInstance().getConfig().getBoolean("self-combat", false);
                 if (victim.getUniqueId().equals(placer.getUniqueId())) {
@@ -84,13 +63,11 @@ public class EndCrystalListener implements Listener {
                 }
             }
         } else if (event.getEntity() instanceof Player victim && !shouldBypass(victim) && event.getFinalDamage() > 0) {
-            // Only try to find a placer if damage actually occurred
             linkCrystalByProximity(damager, victim);
         }
     }
     
     private void linkCrystalByProximity(Entity crystal, Player victim) {
-        // Only search nearby for a responsible player
         for (Entity entity : crystal.getNearbyEntities(4, 4, 4)) {
             if (entity instanceof Player player && !shouldBypass(player)
                     && (!player.equals(victim) || Combat.getInstance().getConfig().getBoolean("self-combat", false))) {
@@ -101,17 +78,14 @@ public class EndCrystalListener implements Listener {
             }
         }
     }
-    
-    // We are no longer using these events for combat tagging - all tagging happens in the damage event
+
     @EventHandler(priority = EventPriority.LOWEST)
     public void onExplosionPrime(ExplosionPrimeEvent event) {
-        // Just track crystal placement
         if (event.getEntity().getType() != EntityType.END_CRYSTAL) return;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onEntityExplode(EntityExplodeEvent event) {
-        // Just for cleanup tracking
         if (event.getEntityType() != EntityType.END_CRYSTAL) return;
     }
     

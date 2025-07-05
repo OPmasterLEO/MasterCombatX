@@ -13,10 +13,13 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
 
 import java.time.Duration;
 import java.util.*;
@@ -42,10 +45,12 @@ public class NewbieProtectionListener implements Listener {
     private String crystalBlockMessage;
     private String anchorBlockMessage;
     private String protectionLeftMessage;
+    private String blockedItemMessage;
 
     private int titleFadeIn = 10;
     private int titleStay = 70;
     private int titleFadeOut = 20;
+    private Set<Material> blockedItems;
 
     public NewbieProtectionListener() {
         reloadConfig();
@@ -252,6 +257,35 @@ public class NewbieProtectionListener implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBlockPlace(BlockPlaceEvent event) {
+        Player player = event.getPlayer();
+
+        if (!isActuallyProtected(player)) return;
+        
+        Material material = event.getBlock().getType();
+
+        if (blockedItems.contains(material)) {
+            event.setCancelled(true);
+            sendBlockedMessage(player, blockedItemMessage);
+        }
+    }
+    
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+
+        if (!isActuallyProtected(player)) return;
+        
+        ItemStack item = event.getItem();
+        if (item == null) return;
+
+        if (blockedItems.contains(item.getType())) {
+            event.setCancelled(true);
+            sendBlockedMessage(player, blockedItemMessage);
+        }
+    }
+
     public void reloadConfig() {
         Combat combat = Combat.getInstance();
         enabled = combat.getConfig().getBoolean("NewbieProtection.enabled", true);
@@ -279,10 +313,22 @@ public class NewbieProtectionListener implements Listener {
             "&cYou cannot attack unprotected players with anchors while protected.");
         protectionLeftMessage = combat.getConfig().getString("NewbieProtection.Messages.ProtectionLeftMessage", 
             "&aProtection Left: %time%");
+        blockedItemMessage = combat.getConfig().getString("NewbieProtection.Messages.BlockedMessage",
+            "&cYou can't use this item while protected.");
 
         titleFadeIn = combat.getConfig().getInt("NewbieProtection.settings.TitleFadeIn", 10);
         titleStay = combat.getConfig().getInt("NewbieProtection.settings.TitleStay", 70);
         titleFadeOut = combat.getConfig().getInt("NewbieProtection.settings.TitleFadeOut", 20);
+
+        blockedItems = new HashSet<>();
+        for (String itemName : combat.getConfig().getStringList("NewbieProtection.settings.BlockedItems")) {
+            try {
+                Material material = Material.valueOf(itemName.toUpperCase());
+                blockedItems.add(material);
+            } catch (IllegalArgumentException e) {
+                combat.getLogger().warning("Invalid material in BlockedItems: " + itemName);
+            }
+        }
     }
 
     public boolean isMobsProtect() {

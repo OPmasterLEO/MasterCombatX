@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WorldGuardUtil {
     private final RegionQuery regionQuery;
     private final Map<Long, CacheEntry> pvpCache = new ConcurrentHashMap<>(4096);
-    private static final long CACHE_TIMEOUT = 10000; // 10 seconds
+    private static final long CACHE_TIMEOUT = 10000;
     private long lastCleanupTime = System.currentTimeMillis();
     
     private static class CacheEntry {
@@ -49,48 +49,29 @@ public class WorldGuardUtil {
             }
         }, 1200L, 1200L);
     }
-
-    /**
-     * Check if PvP is denied for a player at their current location
-     * Optimized for high player counts
-     */
     public boolean isPvpDenied(Player player) {
         if (player == null) return false;
-        
-        // Get chunk-based key for faster lookups
         Location location = player.getLocation();
         long key = locationToChunkKey(location);
-        
-        // Get from cache
         CacheEntry cached = pvpCache.get(key);
         if (cached != null && !cached.isExpired()) {
             return cached.pvpDenied;
         }
-        
-        // Perform actual WorldGuard check if cache miss or entry expired
+
         ApplicableRegionSet regions = regionQuery.getApplicableRegions(BukkitAdapter.adapt(location));
         boolean denied = regions.queryValue(null, Flags.PVP) == StateFlag.State.DENY;
-        
-        // Update cache
         pvpCache.put(key, new CacheEntry(denied));
         
         return denied;
     }
 
-    /**
-     * Convert location to a chunk-based key for caching
-     * This reduces memory usage by caching per chunk rather than exact coordinates
-     */
     private long locationToChunkKey(Location loc) {
         int chunkX = loc.getBlockX() >> 4;
         int chunkZ = loc.getBlockZ() >> 4;
         int worldId = loc.getWorld().getUID().hashCode();
         return ((long)worldId << 40) | ((long)chunkX << 20) | (long)chunkZ;
     }
-    
-    /**
-     * Get cached PvP state for critical operations
-     */
+
     public Boolean getCachedPvpState(UUID playerUuid, Location location) {
         long key = locationToChunkKey(location);
         CacheEntry cached = pvpCache.get(key);

@@ -77,26 +77,33 @@ EnderPearl:
   Distance: 25 # Maximum allowed teleport distance with ender pearls
   Format: '&cYou cannot teleport that far away in combat!'
 
-
+# New Protection system for new players
+# This system protects new players from PvP for a certain time after they join the server.
 NewbieProtection:
- # Should new players be protected from PvP?
-  enabled: true
-  time: 300 # Time in seconds
+  enabled: true # Should new players be protected from PvP?
+  time: 300 # Time of protection in seconds
 
   settings:
     MobsProtect: false # Protects players from mobs during newbie protection
-    disableCommand: "removeprotect"
+    disableCommand: "removeprotect" # Command to disable newbie protection
     MessageType: ActionBar # Type of message to show, can be ActionBar, Chat, title, etc.
+    BlockedItems:
+      - END_CRYSTAL
+      - RESPAWN_ANCHOR
 
+  # Messages for newbie protection
   Messages:
-    ExpiredMessage: "&cYour newbie protection has expired."
-    protectedMessage: "&aYou are protected from PvP for %time% seconds."
-    DisabledMessage: "&cYou are no longer protected from PvP."
+    ExpiredMessage: "&cYour newbie protection has expired." # Message shown when newbie protection expires
+    protectedMessage: "&aYou are protected from PvP for %time% seconds." # Message shown when a player is protected
+    DisabledMessage: "&cYou are no longer protected from PvP." # Message shown when a player disables newbie protection
     disableMessage: "&cWarning! &fYou'll be vulnerable to PvP. Use /combat %command% confirm to disable protection."
     TriedAttackMessage: "&cYou cannot attack while protected. Use /combat %command% to disable."
     AttackerMessage: "&cYou cannot attack that user while in protected mode."
     CrystalBlockMessage: "&cYou cannot attack unprotected players with crystals while protected."
-    ProtectionLeftMessage: "&aProtection Left: %time%"
+    ProtectionLeftMessage: "&aProtection Left: %time%" # Message shown when a player checks their protection time left
+
+    # Message shown when a player tries to use a blocked item while protected
+    BlockedMessage: "&cYou can't do that while protected."
 
 # Should MasterCombat tag players when they damage themselves?
 # Default: false

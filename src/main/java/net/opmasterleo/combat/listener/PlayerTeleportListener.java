@@ -19,8 +19,6 @@ public final class PlayerTeleportListener implements Listener {
         final boolean enderPearlEnabled = combat.isEnderPearlEnabled();
         final boolean inCombat = combat.isInCombat(player);
         final boolean visualEffectsEnabled = combat.getConfig().getBoolean("CombatTagGlowing.Enabled", false);
-
-        // Only apply elytra restrictions if visual effects are enabled
         if (disableElytra && inCombat && visualEffectsEnabled) {
             if (player.isGliding() || player.isFlying()) {
                 player.setGliding(false);
@@ -30,7 +28,6 @@ public final class PlayerTeleportListener implements Listener {
             }
         }
 
-        // Ender pearl restrictions are separate from visual effects and should work regardless
         if (enderPearlEnabled && inCombat && event.getCause() == PlayerTeleportEvent.TeleportCause.ENDER_PEARL) {
             Location from = event.getFrom();
             Location to = event.getTo();

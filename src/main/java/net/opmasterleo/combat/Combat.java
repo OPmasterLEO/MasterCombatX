@@ -80,6 +80,11 @@ public class Combat extends JavaPlugin implements Listener {
         saveDefaultConfig();
         instance = this;
 
+        if (!getConfig().contains("NewbieProtection.Messages.BlockedMessage")) {
+            getConfig().set("NewbieProtection.Messages.BlockedMessage", "&cYou can't use this item while protected.");
+            saveConfig();
+        }
+
         loadConfigValues();
         initializeManagers();
         registerCommands();
@@ -219,7 +224,7 @@ public class Combat extends JavaPlugin implements Listener {
                     Block block = location.getWorld().getBlockAt(blockX + x, blockY + y, blockZ + z);
                     if (block.getType() == Material.RESPAWN_ANCHOR) {
                         anchorBlock = block;
-                        x = y = z = 3; // Break out of loops
+                        x = y = z = 3;
                         break;
                     }
                 }
@@ -241,8 +246,7 @@ public class Combat extends JavaPlugin implements Listener {
 
     public void directSetCombat(Player player, Player opponent) {
         if (!combatEnabled || player == null || opponent == null) return;
-        
-        // Don't tag players in creative mode
+
         if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR ||
             opponent.getGameMode() == GameMode.CREATIVE || opponent.getGameMode() == GameMode.SPECTATOR) {
             return;
@@ -420,7 +424,6 @@ public class Combat extends JavaPlugin implements Listener {
     }
     
     public boolean canDamage(Player attacker, Player victim) {
-        // If either player is in creative/spectator, don't allow combat tagging
         if (attacker.getGameMode() == GameMode.CREATIVE || attacker.getGameMode() == GameMode.SPECTATOR ||
             victim.getGameMode() == GameMode.CREATIVE || victim.getGameMode() == GameMode.SPECTATOR) {
             return false;
@@ -646,7 +649,6 @@ public class Combat extends JavaPlugin implements Listener {
     }
 
     private void sendStartupMessage() {
-        // Use getPluginMeta() for name and version (non-deprecated)
         String version = getPluginMeta().getVersion();
         String pluginName = getPluginMeta().getDisplayName();
 
@@ -688,7 +690,6 @@ public class Combat extends JavaPlugin implements Listener {
             "&b | |__| (_) | | | | | | |_) | (_| | |_    Currently using " + apiType + " - " + serverJarName + "\n" +
             "&b  \\____\\___/|_| |_| |_|_.__/ \\__,_|\\__|   \n";
 
-        // Use ChatUtil.parse for color parsing
         for (String line : asciiArt.split("\n")) {
             Bukkit.getConsoleSender().sendMessage(net.opmasterleo.combat.util.ChatUtil.parse(line));
         }

@@ -25,7 +25,6 @@ public class Update {
     private static boolean updateDownloadInProgress = false;
 
     public static String getLatestVersion() {
-        // Initiate update check if not done yet
         if (latestVersion == null && !updateCheckInProgress) {
             updateCheckInProgress = true;
             try {
@@ -50,8 +49,6 @@ public class Update {
             String pluginName = plugin.getName();
             String currentVersion = plugin.getPluginMeta().getVersion();
             String normalizedCurrent = normalizeVersion(currentVersion);
-            
-            // Fetch latest version if not already available
             if (latestVersion == null && !updateCheckInProgress) {
                 updateCheckInProgress = true;
                 performUpdateCheck(plugin);
@@ -87,18 +84,13 @@ public class Update {
             return;
         }
 
-        // Use non-deprecated methods to get plugin info
         String pluginName = plugin.getName();
         String currentVersion = plugin.getPluginMeta().getVersion();
-        
-        // Ensure we have a latest version
         if (latestVersion == null && !updateCheckInProgress) {
             updateCheckInProgress = true;
             SchedulerUtil.runTaskAsync(plugin, () -> {
                 performUpdateCheck(plugin);
                 updateCheckInProgress = false;
-                
-                // Now that we have the version, send notification on main thread
                 SchedulerUtil.runTask(plugin, () -> {
                     sendUpdateNotification(player, pluginName, currentVersion);
                 });
@@ -141,7 +133,6 @@ public class Update {
     private static void performUpdateCheck(Plugin plugin) {
         String pluginName = plugin.getPluginMeta().getName();
         try {
-            // Fix: Use URI.create().toURL() instead of URL.of()
             URL url = URI.create(GITHUB_API_URL).toURL();
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
@@ -188,8 +179,6 @@ public class Update {
             }
 
             File tempFile = new File(updateFolder, pluginName + "-" + latestVersion + ".jar");
-            
-            // Fix: Use URI.create().toURL() instead of URL.of()
             URL website = URI.create(downloadUrl).toURL();
             try (ReadableByteChannel rbc = Channels.newChannel(website.openStream());
                  FileOutputStream fos = new FileOutputStream(tempFile)) {
