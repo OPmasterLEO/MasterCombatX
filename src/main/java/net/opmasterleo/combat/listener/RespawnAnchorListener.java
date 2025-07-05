@@ -2,14 +2,12 @@ package net.opmasterleo.combat.listener;
 
 import net.opmasterleo.combat.Combat;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.GameMode;
-import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.type.RespawnAnchor;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -18,7 +16,6 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.inventory.EquipmentSlot;
@@ -28,12 +25,24 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RespawnAnchorListener implements Listener {
-
-    private final Map<UUID, UUID> anchorActivators = new ConcurrentHashMap<>();
-
+    private final Combat plugin = Combat.getInstance();
+    private final Map<Block, UUID> anchorActivators = new ConcurrentHashMap<>();
+    // Cache of recent explosions to link them to their activators
+    private final Map<Location, ExplosionData> explosionCache = new ConcurrentHashMap<>();
+    
+    private static class ExplosionData {
+        final UUID activatorId;
+        final long timestamp;
+        
+        ExplosionData(UUID activatorId) {
+            this.activatorId = activatorId;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
+    
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (!isRespawnAnchorCombatEnabled()) return;
+        if (!isEnabled()) return;
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (event.getHand() != EquipmentSlot.HAND) return;
 
@@ -43,250 +52,177 @@ public class RespawnAnchorListener implements Listener {
         Player player = event.getPlayer();
         if (shouldBypass(player)) return;
 
-        // Just store the UUID of the block and player
-        UUID blockId = getBlockId(block);
-        anchorActivators.put(blockId, player.getUniqueId());
-        block.setMetadata("anchor_activator_uuid", new FixedMetadataValue(Combat.getInstance(), player.getUniqueId()));
+        // Store anchor activator
+        anchorActivators.put(block, player.getUniqueId());
+        
+        // Add metadata for other plugins
+        block.setMetadata("anchor_activator_uuid", 
+            new FixedMetadataValue(plugin, player.getUniqueId()));
 
-        // Check if the anchor has charges and player isn't holding glowstone (which would charge it)
+        // Check if the anchor has charges and player isn't holding glowstone
         BlockData data = block.getBlockData();
         if (data instanceof RespawnAnchor anchor && 
             anchor.getCharges() > 0 && 
             !player.getInventory().getItemInMainHand().getType().equals(Material.GLOWSTONE)) {
             
-            // If player has self-combat enabled, tag them
-            Combat combat = Combat.getInstance();
-            boolean selfCombat = combat.getConfig().getBoolean("self-combat", false);
-            if (selfCombat) {
-                combat.directSetCombat(player, player);
+            // Only do self-combat here - other combat happens on actual damage
+            if (plugin.getConfig().getBoolean("self-combat", false)) {
+                plugin.directSetCombat(player, player);
             }
         }
     }
 
-    public void trackAnchorInteraction(Block block, Player player) {
-        if (!isRespawnAnchorCombatEnabled() || block == null || block.getType() != Material.RESPAWN_ANCHOR) return;
-        UUID blockId = getBlockId(block);
-        anchorActivators.put(blockId, player.getUniqueId());
-    }
-
-    public void registerPotentialExplosion(Location location, Player player) {
-        if (!isRespawnAnchorCombatEnabled()) return;
-        
-        UUID blockId = getBlockId(location.getBlock());
-        anchorActivators.put(blockId, player.getUniqueId());
-        
-        // Register nearby blocks in a small radius
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (int z = -1; z <= 1; z++) {
-                    if (x == 0 && y == 0 && z == 0) continue;
-                    
-                    Block nearbyBlock = location.clone().add(x, y, z).getBlock();
-                    UUID nearbyId = getBlockId(nearbyBlock);
-                    anchorActivators.put(nearbyId, player.getUniqueId());
-                }
-            }
-        }
-        
-        // Apply self-combat if enabled
-        if (Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
-            Combat.getInstance().directSetCombat(player, player);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onExplosionPrime(ExplosionPrimeEvent event) {
-        // Let Bukkit handle the explosion details - just check for nearby anchors
-        Location loc = event.getEntity().getLocation();
-        
-        // Use event's actual explosion radius instead of fixed values
-        float explosionRadius = event.getRadius() * 2.5f; // Safety buffer to catch all affected players
-        
-        for (int x = -3; x <= 3; x++) {
-            for (int y = -3; y <= 3; y++) {
-                for (int z = -3; z <= 3; z++) {
-                    Block block = loc.getWorld().getBlockAt(
-                            loc.getBlockX() + x, 
-                            loc.getBlockY() + y, 
-                            loc.getBlockZ() + z);
-                    
-                    if (block.getType() == Material.RESPAWN_ANCHOR) {
-                        UUID blockId = getBlockId(block);
-                        UUID activatorUUID = anchorActivators.get(blockId);
-                        
-                        if (activatorUUID != null) {
-                            Player activator = Bukkit.getPlayer(activatorUUID);
-                            if (activator != null && !shouldBypass(activator)) {
-                                Combat combat = Combat.getInstance();
-                                boolean selfCombat = combat.getConfig().getBoolean("self-combat", false);
-                                
-                                // Use explosion's actual radius to find potential victims
-                                for (Entity entity : loc.getWorld().getNearbyEntities(loc, explosionRadius, explosionRadius, explosionRadius)) {
-                                    if (entity instanceof Player victim && !shouldBypass(victim)) {
-                                        // Additional validation - check if there's a line of sight for the explosion
-                                        if (hasLineOfSightToExplosion(victim, loc)) {
-                                            if (activator.getUniqueId().equals(victim.getUniqueId())) {
-                                                if (selfCombat) {
-                                                    combat.directSetCombat(activator, activator);
-                                                }
-                                            } else {
-                                                combat.directSetCombat(activator, victim);
-                                                combat.directSetCombat(victim, activator);
-                                            }
-                                        }
-                                    }
-                                }
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onEntityExplode(EntityExplodeEvent event) {
-        for (Block block : event.blockList()) {
-            if (block.getType() == Material.RESPAWN_ANCHOR) {
-                UUID blockId = getBlockId(block);
-                UUID activatorUUID = anchorActivators.get(blockId);
-                
-                if (activatorUUID != null) {
-                    Player activator = Bukkit.getPlayer(activatorUUID);
-                    if (activator != null && !shouldBypass(activator)) {
-                        Combat combat = Combat.getInstance();
-                        boolean selfCombat = combat.getConfig().getBoolean("self-combat", false);
-                        
-                        // Use event's yield to calculate more accurate explosion radius
-                        float explosionRadius = event.getYield() * 3.0f; // More accurate than fixed values
-                        
-                        // Find all nearby players who could be affected by the explosion
-                        for (Entity entity : block.getWorld().getNearbyEntities(block.getLocation(), 
-                                explosionRadius, explosionRadius, explosionRadius)) {
-                            if (entity instanceof Player victim && !shouldBypass(victim)) {
-                                // Validate with line of sight check for more accuracy
-                                if (hasLineOfSightToExplosion(victim, block.getLocation())) {
-                                    if (activator.getUniqueId().equals(victim.getUniqueId())) {
-                                        if (selfCombat) {
-                                            combat.directSetCombat(activator, activator);
-                                        }
-                                    } else {
-                                        combat.directSetCombat(activator, victim);
-                                        combat.directSetCombat(victim, activator);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                break;
-            }
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    /**
+     * Main method for combat tagging - only tags players when actual damage occurs
+     */
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
-        if (event.getCause() != DamageCause.BLOCK_EXPLOSION && event.getCause() != DamageCause.ENTITY_EXPLOSION) {
+        if (!isEnabled()) return;
+        if (!(event.getEntity() instanceof Player victim)) return;
+        if (shouldBypass(victim)) return;
+        
+        // Only handle explosion damage
+        if (event.getCause() != DamageCause.BLOCK_EXPLOSION && 
+            event.getCause() != DamageCause.ENTITY_EXPLOSION) {
             return;
         }
-
-        // This is the most important check - if the player is ACTUALLY damaged, 
-        // they should be combat tagged regardless of distance calculations
-        if (!(event.getEntity() instanceof Player victim) || shouldBypass(victim)) return;
-
-        // Find anchor within 6 blocks of the damage location
-        // (search wider than before since damage can propagate)
-        Location damageLocation = event.getEntity().getLocation();
-        Block anchorBlock = findNearestAnchor(damageLocation, 6);
         
-        if (anchorBlock != null) {
-            UUID blockId = getBlockId(anchorBlock);
-            UUID activatorUUID = anchorActivators.get(blockId);
+        // Verify damage actually occurred
+        if (event.getFinalDamage() <= 0) return;
+
+        Location damageLocation = victim.getLocation();
+        Player activator = findActivatorForDamage(damageLocation);
+        
+        // If we found an activator, tag both players
+        if (activator != null && !shouldBypass(activator)) {
+            boolean selfCombat = plugin.getConfig().getBoolean("self-combat", false);
             
-            if (activatorUUID != null) {
-                Player activator = Bukkit.getPlayer(activatorUUID);
+            if (activator.getUniqueId().equals(victim.getUniqueId())) {
+                if (selfCombat) {
+                    plugin.directSetCombat(activator, activator);
+                }
+            } else {
+                // This is guaranteed damage - tag both players
+                plugin.directSetCombat(activator, victim);
+                plugin.directSetCombat(victim, activator);
+            }
+        }
+    }
+    
+    /**
+     * Find the player who activated an anchor that caused damage at this location
+     */
+    private Player findActivatorForDamage(Location damageLocation) {
+        // 1. First check the explosion cache for a direct match
+        for (Map.Entry<Location, ExplosionData> entry : explosionCache.entrySet()) {
+            if (isSameWorld(entry.getKey(), damageLocation) && 
+                entry.getKey().distanceSquared(damageLocation) <= 100) { // 10 block radius^2
                 
-                if (activator != null && !shouldBypass(activator)) {
-                    Combat combat = Combat.getInstance();
-                    boolean selfCombat = combat.getConfig().getBoolean("self-combat", false);
-                    
-                    if (activator.getUniqueId().equals(victim.getUniqueId())) {
-                        if (selfCombat) {
-                            combat.directSetCombat(activator, activator);
-                        }
-                    } else {
-                        // GUARANTEED: Player was actually damaged by anchor explosion
-                        combat.directSetCombat(activator, victim);
-                        combat.directSetCombat(victim, activator);
-                    }
-                }
+                UUID activatorId = entry.getValue().activatorId;
+                return Bukkit.getPlayer(activatorId);
             }
         }
+        
+        // 2. If not found, look for anchors near the damage location
+        for (Map.Entry<Block, UUID> entry : anchorActivators.entrySet()) {
+            Block block = entry.getKey();
+            if (isSameWorld(block.getLocation(), damageLocation) && 
+                block.getLocation().distanceSquared(damageLocation) <= 100) { // 10 block radius^2
+                
+                return Bukkit.getPlayer(entry.getValue());
+            }
+        }
+        
+        return null;
     }
     
-    /**
-     * Find the nearest respawn anchor to a location
-     */
-    private Block findNearestAnchor(Location location, int radius) {
-        World world = location.getWorld();
-        int x = location.getBlockX();
-        int y = location.getBlockY();
-        int z = location.getBlockZ();
-        Block nearestAnchor = null;
-        double nearestDistSq = radius * radius;
+    private boolean isSameWorld(Location loc1, Location loc2) {
+        return loc1.getWorld() != null && loc1.getWorld().equals(loc2.getWorld());
+    }
+    
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityExplode(EntityExplodeEvent event) {
+        if (!isEnabled()) return;
         
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dy = -radius; dy <= radius; dy++) {
-                for (int dz = -radius; dz <= radius; dz++) {
-                    // Skip checking blocks too far away
-                    if (dx*dx + dy*dy + dz*dz > nearestDistSq) continue;
+        // Find any anchor in exploded blocks and record the explosion
+        for (Block block : event.blockList()) {
+            if (block.getType() == Material.RESPAWN_ANCHOR) {
+                UUID activatorId = anchorActivators.remove(block);
+                if (activatorId != null) {
+                    // Record this explosion in the cache
+                    explosionCache.put(event.getLocation(), new ExplosionData(activatorId));
                     
-                    Block block = world.getBlockAt(x + dx, y + dy, z + dz);
-                    if (block.getType() == Material.RESPAWN_ANCHOR) {
-                        double distSq = dx*dx + dy*dy + dz*dz;
-                        if (distSq < nearestDistSq) {
-                            nearestAnchor = block;
-                            nearestDistSq = distSq;
-                        }
-                    }
+                    // Schedule cleanup of old explosion records
+                    Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+                        explosionCache.remove(event.getLocation());
+                    }, 100L); // 5 seconds
+                    
+                    break;
                 }
             }
         }
         
-        return nearestAnchor;
+        // Clean up explosion cache periodically
+        if (explosionCache.size() > 100) {
+            long now = System.currentTimeMillis();
+            explosionCache.entrySet().removeIf(entry -> 
+                now - entry.getValue().timestamp > 10000); // 10 seconds
+        }
+    }
+
+    /**
+     * Register a player as the activator for an anchor
+     */
+    public void trackAnchorInteraction(Block block, Player player) {
+        if (!isEnabled() || block == null || block.getType() != Material.RESPAWN_ANCHOR || player == null) return;
+        anchorActivators.put(block, player.getUniqueId());
+    }
+
+    /**
+     * Register a potential explosion location with its activator
+     */
+    public void registerPotentialExplosion(Location location, Player player) {
+        if (!isEnabled() || location == null || player == null) return;
+        explosionCache.put(location, new ExplosionData(player.getUniqueId()));
+        
+        // Clean up this registration after a reasonable time
+        Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+            explosionCache.remove(location);
+        }, 100L); // 5 seconds
+        
+        // Apply self-combat if enabled
+        if (plugin.getConfig().getBoolean("self-combat", false)) {
+            plugin.directSetCombat(player, player);
+        }
     }
     
-    /**
-     * Check if player has line of sight to explosion (affects damage)
-     */
-    private boolean hasLineOfSightToExplosion(Player player, Location explosion) {
-        return player.getWorld().rayTraceBlocks(
-            player.getEyeLocation(),
-            explosion.toVector().subtract(player.getEyeLocation().toVector()),
-            8.0,
-            org.bukkit.FluidCollisionMode.NEVER,
-            true
-        ) == null;
-    }
-
-    private UUID getBlockId(Block block) {
-        return UUID.nameUUIDFromBytes(block.getLocation().toString().getBytes());
-    }
-
     private boolean shouldBypass(Player player) {
-        return player.getGameMode() == GameMode.CREATIVE || 
+        return player == null || 
+               player.getGameMode() == GameMode.CREATIVE || 
                player.getGameMode() == GameMode.SPECTATOR;
     }
-
-    private boolean isRespawnAnchorCombatEnabled() {
-        Combat combat = Combat.getInstance();
-        return combat.isCombatEnabled() && combat.getConfig().getBoolean("link-respawn-anchor", true);
+    
+    private boolean isEnabled() {
+        return plugin.isCombatEnabled() && 
+               plugin.getConfig().getBoolean("link-respawn-anchor", true);
     }
-
+    
+    /**
+     * Get the anchor activator for the given anchor ID
+     */
     public Player getAnchorActivator(UUID anchorId) {
-        UUID playerId = anchorActivators.get(anchorId);
-        if (playerId == null) return null;
-        return Combat.getInstance().getServer().getPlayer(playerId);
+        for (Map.Entry<Block, UUID> entry : anchorActivators.entrySet()) {
+            Block block = entry.getKey();
+            if (UUID.nameUUIDFromBytes(block.getLocation().toString().getBytes()).equals(anchorId)) {
+                return Bukkit.getPlayer(entry.getValue());
+            }
+        }
+        return null;
+    }
+    
+    // Clean up method to be called during reloads/disable
+    public void cleanup() {
+        anchorActivators.clear();
+        explosionCache.clear();
     }
 }

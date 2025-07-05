@@ -15,19 +15,35 @@ public class PlayerQuitListener implements Listener {
         
         if (combat.isInCombat(player)) {
             Player opponent = combat.getCombatOpponent(player);
+            
+            // Kill the player who left during combat
+            player.setHealth(0);
+            
+            // Log a death message
+            String logoutMsg = combat.getMessage("Messages.LogoutInCombat");
+            if (logoutMsg != null && !logoutMsg.isEmpty()) {
+                String message = logoutMsg.replace("%player%", player.getName());
+                combat.getServer().getOnlinePlayers().forEach(p -> p.sendMessage(message));
+            }
+            
+            // Clean up combat tags
             combat.getCombatPlayers().remove(player.getUniqueId());
             combat.getCombatOpponents().remove(player.getUniqueId());
             
+            // Handle glow effects
             if (combat.getGlowManager() != null) {
                 combat.getGlowManager().setGlowing(player, false);
                 if (opponent != null) {
                     combat.getGlowManager().setGlowing(opponent, false);
+                    
+                    // Remove opponent from combat too
+                    combat.getCombatPlayers().remove(opponent.getUniqueId());
+                    combat.getCombatOpponents().remove(opponent.getUniqueId());
+                    
+                    // Inform opponent of combat log
+                    opponent.sendMessage(combat.getMessage("Messages.CombatLogged")
+                            .replace("%player%", player.getName()));
                 }
-            }
-            
-            if (opponent != null) {
-                opponent.sendMessage(combat.getMessage("Messages.CombatLogged")
-                        .replace("%player%", player.getName()));
             }
         }
     }
