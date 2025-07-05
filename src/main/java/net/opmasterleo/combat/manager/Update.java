@@ -3,14 +3,18 @@ package net.opmasterleo.combat.manager;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+
+import net.opmasterleo.combat.util.SchedulerUtil;
 
 public class Update {
 
@@ -21,27 +25,39 @@ public class Update {
     private static boolean updateDownloadInProgress = false;
 
     public static String getLatestVersion() {
+        // Initiate update check if not done yet
+        if (latestVersion == null && !updateCheckInProgress) {
+            updateCheckInProgress = true;
+            try {
+                performUpdateCheck(Bukkit.getPluginManager().getPlugin("MasterCombat"));
+            } finally {
+                updateCheckInProgress = false;
+            }
+        }
         return latestVersion;
     }
 
     public static void checkForUpdates(Plugin plugin) {
         if (!updateCheckInProgress) {
             updateCheckInProgress = true;
-            Bukkit.getConsoleSender().sendMessage("Checking for updates…");
-            if (isFolia()) {
-                Bukkit.getGlobalRegionScheduler().execute(plugin, () -> performUpdateCheck(plugin));
-            } else {
-                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> performUpdateCheck(plugin));
-            }
+            Bukkit.getConsoleSender().sendMessage("§b[MasterCombat] §eChecking for updates…");
+            SchedulerUtil.runTaskAsync(plugin, () -> performUpdateCheck(plugin));
         }
     }
 
-    @SuppressWarnings("deprecation")
     public static void notifyOnServerOnline(Plugin plugin) {
-        Runnable notificationTask = () -> {
-            String pluginName = plugin.getDescription().getName();
-            String currentVersion = plugin.getDescription().getVersion();
+        SchedulerUtil.runTaskLater(plugin, () -> {
+            String pluginName = plugin.getName();
+            String currentVersion = plugin.getPluginMeta().getVersion();
             String normalizedCurrent = normalizeVersion(currentVersion);
+            
+            // Fetch latest version if not already available
+            if (latestVersion == null && !updateCheckInProgress) {
+                updateCheckInProgress = true;
+                performUpdateCheck(plugin);
+                updateCheckInProgress = false;
+            }
+            
             String normalizedLatest = latestVersion != null ? normalizeVersion(latestVersion) : null;
 
             if (latestVersion == null) {
@@ -59,16 +75,9 @@ public class Update {
             } else {
                 Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» You are running a developer build (v" + currentVersion + "), but the latest public version is v" + latestVersion + ".");
             }
-        };
-
-        if (isFolia()) {
-            Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> notificationTask.run(), 20L * 3);
-        } else {
-            Bukkit.getScheduler().runTaskLater(plugin, notificationTask, 20L * 3);
-        }
+        }, 20L * 3);
     }
 
-    @SuppressWarnings("deprecation")
     public static void notifyOnPlayerJoin(Player player, Plugin plugin) {
         if (!player.isOp()) {
             return;
@@ -78,11 +87,31 @@ public class Update {
             return;
         }
 
-        String pluginName = plugin.getDescription().getName();
-        String currentVersion = plugin.getDescription().getVersion();
+        // Use non-deprecated methods to get plugin info
+        String pluginName = plugin.getName();
+        String currentVersion = plugin.getPluginMeta().getVersion();
+        
+        // Ensure we have a latest version
+        if (latestVersion == null && !updateCheckInProgress) {
+            updateCheckInProgress = true;
+            SchedulerUtil.runTaskAsync(plugin, () -> {
+                performUpdateCheck(plugin);
+                updateCheckInProgress = false;
+                
+                // Now that we have the version, send notification on main thread
+                SchedulerUtil.runTask(plugin, () -> {
+                    sendUpdateNotification(player, pluginName, currentVersion);
+                });
+            });
+        } else {
+            sendUpdateNotification(player, pluginName, currentVersion);
+        }
+    }
+    
+    private static void sendUpdateNotification(Player player, String pluginName, String currentVersion) {
         String normalizedCurrent = normalizeVersion(currentVersion);
         String normalizedLatest = latestVersion != null ? normalizeVersion(latestVersion) : null;
-
+        
         if (latestVersion == null) {
             player.sendMessage("§c[" + pluginName + "]» Unable to fetch update information.");
             return;
@@ -95,6 +124,7 @@ public class Update {
         } else if (comparison < 0) {
             player.sendMessage("§e[" + pluginName + "]» This server is running " + pluginName + " version v" + currentVersion +
                     " but the latest is v" + latestVersion + ".");
+            player.sendMessage("§e[" + pluginName + "]» Use /combat update to update the plugin.");
         } else {
             player.sendMessage("§a[" + pluginName + "]» You are running a developer build (v" + currentVersion + "), but the latest public version is " + latestVersion + ".");
         }
@@ -103,22 +133,20 @@ public class Update {
     public static void downloadAndReplaceJar(Plugin plugin) {
         if (!updateDownloadInProgress) {
             updateDownloadInProgress = true;
-            Bukkit.getConsoleSender().sendMessage("Downloading and applying the update...");
-            if (isFolia()) {
-                Bukkit.getGlobalRegionScheduler().execute(plugin, () -> performJarReplacement(plugin));
-            } else {
-                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> performJarReplacement(plugin));
-            }
+            Bukkit.getConsoleSender().sendMessage("§b[MasterCombat] §eDownloading and applying the update...");
+            SchedulerUtil.runTaskAsync(plugin, () -> performJarReplacement(plugin));
         }
     }
 
-    @SuppressWarnings("deprecation")
     private static void performUpdateCheck(Plugin plugin) {
-        String pluginName = plugin.getDescription().getName();
+        String pluginName = plugin.getPluginMeta().getName();
         try {
-            HttpURLConnection connection = (HttpURLConnection) URI.create(GITHUB_API_URL).toURL().openConnection();
+            // Fix: Use URI.create().toURL() instead of URL.of()
+            URL url = URI.create(GITHUB_API_URL).toURL();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Accept", "application/vnd.github.v3+json");
+            connection.setRequestProperty("User-Agent", "MasterCombat-UpdateChecker");
             connection.setConnectTimeout(5000);
             connection.setReadTimeout(5000);
 
@@ -142,10 +170,17 @@ public class Update {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private static void performJarReplacement(Plugin plugin) {
-        String pluginName = plugin.getDescription().getName();
+        String pluginName = plugin.getPluginMeta().getName();
         try {
+            if (downloadUrl == null || latestVersion == null) {
+                performUpdateCheck(plugin);
+                if (downloadUrl == null) {
+                    Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Could not find download URL for the latest version.");
+                    return;
+                }
+            }
+            
             File updateFolder = new File(plugin.getDataFolder().getParentFile(), "update");
             if (!updateFolder.exists() && !updateFolder.mkdirs()) {
                 Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to create update folder.");
@@ -153,47 +188,35 @@ public class Update {
             }
 
             File tempFile = new File(updateFolder, pluginName + "-" + latestVersion + ".jar");
-
-            HttpURLConnection connection = (HttpURLConnection) URI.create(downloadUrl).toURL().openConnection();
-            connection.setRequestMethod("GET");
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
-
-            try (InputStream in = connection.getInputStream();
-                 FileOutputStream out = new FileOutputStream(tempFile)) {
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-                while ((bytesRead = in.read(buffer)) != -1) {
-                    out.write(buffer, 0, bytesRead);
-                }
+            
+            // Fix: Use URI.create().toURL() instead of URL.of()
+            URL website = URI.create(downloadUrl).toURL();
+            try (ReadableByteChannel rbc = Channels.newChannel(website.openStream());
+                 FileOutputStream fos = new FileOutputStream(tempFile)) {
+                fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
             }
 
             if (tempFile.exists() && tempFile.length() > 0) {
-                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Update complete. The new version has been placed in the update folder.");
+                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Update successfully downloaded!");
+                Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» The new version has been placed in the update folder.");
                 Bukkit.getConsoleSender().sendMessage("§a[" + pluginName + "]» Please restart your server to apply the update.");
             } else {
                 Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» Failed to download the latest jar. File does not exist or is empty.");
             }
         } catch (Exception e) {
             Bukkit.getConsoleSender().sendMessage("§c[" + pluginName + "]» An error occurred while downloading the jar: " + e.getMessage());
+            e.printStackTrace();
         } finally {
             updateDownloadInProgress = false;
         }
     }
 
     public static boolean isFolia() {
-        try {
-            Class.forName("io.papermc.paper.threadedregions.RegionizedServer", false, Update.class.getClassLoader());
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        } catch (IllegalStateException e) {
-            Bukkit.getConsoleSender().sendMessage("§c[MasterCombat] Error checking for Folia: " + e.getMessage());
-            return false;
-        }
+        return SchedulerUtil.isFolia();
     }
 
     private static String normalizeVersion(String version) {
+        if (version == null) return "";
         return version.replaceAll("[^0-9.]", "");
     }
 

@@ -5,68 +5,57 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
 import net.opmasterleo.combat.Combat;
 
 public final class CrystalManager {
-    private final Map<UUID, UUID> endCrystalMap;
-    private final Map<Integer, UUID> entityIdMap;
+    private final Map<Integer, UUID> crystalEntityMap = new ConcurrentHashMap<>(2048);
+    private final Map<Integer, Long> expiryTimes = new ConcurrentHashMap<>(2048);
+    private static final long CRYSTAL_TTL = 300000; // 5 minutes
+    private long lastCleanupTime = System.currentTimeMillis();
 
     public CrystalManager() {
-        this.endCrystalMap = new ConcurrentHashMap<>();
-        this.entityIdMap = new ConcurrentHashMap<>();
+        startCleanupTask();
+    }
+    
+    private void startCleanupTask() {
+        Bukkit.getScheduler().runTaskTimerAsynchronously(Combat.getInstance(), () -> {
+            if (System.currentTimeMillis() - lastCleanupTime > 60000) {
+                long now = System.currentTimeMillis();
+                expiryTimes.entrySet().removeIf(entry -> entry.getValue() < now);
+                crystalEntityMap.keySet().removeIf(id -> !expiryTimes.containsKey(id));
+                lastCleanupTime = now;
+            }
+        }, 1200L, 1200L);
     }
 
     public Player getPlacer(Entity crystal) {
+        if (crystal == null) return null;
+        
         if (!Combat.getInstance().getConfig().getBoolean("link-end-crystals", true)) {
             return null;
         }
 
-        UUID entityId = crystal.getUniqueId();
-        UUID playerId = this.endCrystalMap.get(entityId);
-        if (playerId == null) {
-            return null;
-        }
+        UUID playerId = crystalEntityMap.get(crystal.getEntityId());
+        if (playerId == null) return null;
 
-        Player placer = Bukkit.getPlayer(playerId);
-        if (placer == null && !Combat.getInstance().getConfig().getBoolean("self-combat", false)) {
-            return null;
-        }
-        return placer;
+        return Bukkit.getPlayer(playerId);
     }
 
     public void setPlacer(Entity crystal, Player player) {
-        UUID entityId = crystal.getUniqueId();
-        UUID playerId = player.getUniqueId();
-        this.endCrystalMap.put(entityId, playerId);
-        this.entityIdMap.put(crystal.getEntityId(), entityId);
-    }
-
-    public void handleInteract(Player player, int entityId, Object action) {
-        try {
-            UUID crystalUUID = this.entityIdMap.get(entityId);
-            if (crystalUUID == null) return;
-
-            Entity entity = Bukkit.getEntity(crystalUUID);
-            if (entity == null || entity.getType() != EntityType.END_CRYSTAL) return;
-
-            setPlacer(entity, player);
-        } catch (Exception e) {
-        }
-    }
-
-    public void remove(UUID crystalId) {
-        Entity entity = Bukkit.getEntity(crystalId);
-        if (entity != null) {
-            this.entityIdMap.remove(entity.getEntityId());
-        }
-        this.endCrystalMap.remove(crystalId);
+        if (crystal == null || player == null) return;
+        
+        int entityId = crystal.getEntityId();
+        crystalEntityMap.put(entityId, player.getUniqueId());
+        expiryTimes.put(entityId, System.currentTimeMillis() + CRYSTAL_TTL);
     }
 
     public void removeCrystal(Entity crystal) {
-        this.entityIdMap.remove(crystal.getEntityId());
-        this.endCrystalMap.remove(crystal.getUniqueId());
+        if (crystal == null) return;
+        
+        int entityId = crystal.getEntityId();
+        crystalEntityMap.remove(entityId);
+        expiryTimes.remove(entityId);
     }
 }

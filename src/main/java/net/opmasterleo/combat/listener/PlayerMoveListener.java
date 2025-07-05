@@ -30,7 +30,13 @@ public final class PlayerMoveListener implements Listener {
         private void restrictPlayerMovement(Player player) {
         Combat combat = Combat.getInstance();
         
+        // Only apply movement restrictions if in combat and elytra restrictions enabled
+        // AND visual effects (glowing) are enabled
         if (!combat.isDisableElytra() || !combat.isInCombat(player)) return;
+        
+        // Check if visual effects are enabled
+        boolean visualEffectsEnabled = combat.getConfig().getBoolean("CombatTagGlowing.Enabled", false);
+        if (!visualEffectsEnabled) return;
         
         if (player.isGliding()) {
             player.setGliding(false);
@@ -47,7 +53,13 @@ public final class PlayerMoveListener implements Listener {
         Player player = event.getPlayer();
         Combat combat = Combat.getInstance();
         
+        // Only block elytra if in combat and elytra restriction is enabled
+        // AND visual effects are enabled
         if (!combat.isInCombat(player) || !combat.isDisableElytra()) return;
+        
+        // Check if visual effects are enabled
+        boolean visualEffectsEnabled = combat.getConfig().getBoolean("CombatTagGlowing.Enabled", false);
+        if (!visualEffectsEnabled) return;
         
         if (event.isFlying()) {
             event.setCancelled(true);

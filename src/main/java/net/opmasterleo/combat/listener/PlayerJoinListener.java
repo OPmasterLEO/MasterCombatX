@@ -1,6 +1,7 @@
 package net.opmasterleo.combat.listener;
 
 import net.opmasterleo.combat.Combat;
+import net.opmasterleo.combat.manager.Update;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -18,7 +19,7 @@ public class PlayerJoinListener implements Listener {
         }
         
         if (player.isOp() && combat.getConfig().getBoolean("update-notify-chat", false)) {
-            combat.notifyPlayerAboutUpdates(player);
+            Update.notifyOnPlayerJoin(player, combat);
         }
     }
 }

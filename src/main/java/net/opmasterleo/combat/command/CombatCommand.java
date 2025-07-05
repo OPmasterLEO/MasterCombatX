@@ -9,6 +9,9 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.entity.PlayerDeathEvent;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -20,6 +23,28 @@ import net.opmasterleo.combat.manager.Update;
 public class CombatCommand implements CommandExecutor, TabCompleter {
 
     private static boolean updateCheckInProgress = false;
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getPlayer();
+        Combat combat = Combat.getInstance();
+        
+        combat.getCombatPlayers().remove(player.getUniqueId());
+        Player opponent = combat.getCombatOpponent(player);
+        combat.getCombatOpponents().remove(player.getUniqueId());
+        
+        if (combat.getGlowManager() != null) {
+            combat.getGlowManager().setGlowing(player, false);
+            if (opponent != null) {
+                combat.getGlowManager().setGlowing(opponent, false);
+            }
+        }
+        
+        if (opponent != null) {
+            combat.getCombatPlayers().remove(opponent.getUniqueId());
+            combat.getCombatOpponents().remove(opponent.getUniqueId());
+        }
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
@@ -106,8 +131,7 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
                     Combat plugin = Combat.getInstance();
                     Update.checkForUpdates(plugin);
                     plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                        // Use the cached plugin description
-                        String currentVersion = plugin.getPluginDescription().getVersion();
+                        String currentVersion = plugin.getPluginMeta().getVersion();
                         String latestVersion = Update.getLatestVersion();
                         updateCheckInProgress = false;
                         if (latestVersion == null) {

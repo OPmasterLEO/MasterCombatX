@@ -20,6 +20,11 @@ public class SelfCombatListener implements Listener {
         if (!(event.getEntity() instanceof Player player)) return;
 
         Combat combat = Combat.getInstance();
+        
+        // Add WorldGuard check
+        if (combat.getWorldGuardUtil() != null && combat.getWorldGuardUtil().isPvpDenied(player)) {
+            return;
+        }
 
         if (event.getDamager() instanceof Projectile projectile && 
             projectile.getType() == EntityType.ENDER_PEARL) {

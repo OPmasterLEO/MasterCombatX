@@ -11,20 +11,29 @@ import org.bukkit.entity.Tameable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.GameMode;
 import net.opmasterleo.combat.Combat;
 import net.opmasterleo.combat.manager.SuperVanishManager;
 
 public final class EntityDamageByEntityListener implements Listener {
 
-    @EventHandler
+    @EventHandler(priority = org.bukkit.event.EventPriority.LOWEST)
     public void handle(EntityDamageByEntityEvent event) {
         if (event.isCancelled()) return;
         if (!(event.getEntity() instanceof Player player)) return;
         
         Combat combat = Combat.getInstance();
         if (combat.getWorldGuardUtil() != null && combat.getWorldGuardUtil().isPvpDenied(player)) return;
+        if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) {
+            return;
+        }
 
         Entity damager = event.getDamager();
+        if (damager instanceof Player damagerPlayer) {
+            if (damagerPlayer.getGameMode() == GameMode.CREATIVE || damagerPlayer.getGameMode() == GameMode.SPECTATOR) {
+                return;
+            }
+        }
         
         if (damager instanceof Projectile projectile && projectile.getType() == EntityType.ENDER_PEARL) {
             return;
@@ -83,12 +92,12 @@ public final class EntityDamageByEntityListener implements Listener {
         if (damager instanceof Player damagerP) {
             if (damagerP.getUniqueId().equals(player.getUniqueId())) {
                 if (combat.getConfig().getBoolean("self-combat", false)) {
-                    combat.setCombat(player, player);
+                    combat.directSetCombat(player, player);
                 }
                 return;
             }
-            combat.setCombat(player, damagerP);
-            combat.setCombat(damagerP, player);
+            combat.directSetCombat(player, damagerP);
+            combat.directSetCombat(damagerP, player);
             return;
         }
 
@@ -100,11 +109,11 @@ public final class EntityDamageByEntityListener implements Listener {
             if (projectile.getShooter() instanceof Player shooter) {
                 if (shooter.getUniqueId().equals(player.getUniqueId())) {
                     if (selfCombat) {
-                        combat.setCombat(player, player);
+                        combat.directSetCombat(player, player); // Changed to directSetCombat
                     }
                 } else {
-                    combat.setCombat(player, shooter);
-                    combat.setCombat(shooter, player);
+                    combat.directSetCombat(player, shooter); // Changed to directSetCombat
+                    combat.directSetCombat(shooter, player); // Changed to directSetCombat
                 }
             }
         }
@@ -118,8 +127,8 @@ public final class EntityDamageByEntityListener implements Listener {
                     !combat.getConfig().getBoolean("self-combat", false)) {
                     return;
                 }
-                combat.setCombat(player, placer);
-                combat.setCombat(placer, player);
+                combat.directSetCombat(player, placer); // Changed to directSetCombat
+                combat.directSetCombat(placer, player); // Changed to directSetCombat
             }
             return;
         }
@@ -127,8 +136,8 @@ public final class EntityDamageByEntityListener implements Listener {
         if (combat.getConfig().getBoolean("link-pets", true) && damager instanceof Tameable tameable) {
             if (tameable.getOwner() instanceof Player owner) {
                 if (owner.getUniqueId().equals(player.getUniqueId())) return;
-                combat.setCombat(player, owner);
-                combat.setCombat(owner, player);
+                combat.directSetCombat(player, owner); // Changed to directSetCombat
+                combat.directSetCombat(owner, player); // Changed to directSetCombat
             }
             return;
         }
@@ -136,8 +145,8 @@ public final class EntityDamageByEntityListener implements Listener {
         if (combat.getConfig().getBoolean("link-fishing-rod", true) && damager instanceof FishHook fishHook) {
             if (fishHook.getShooter() instanceof Player shooter) {
                 if (shooter.getUniqueId().equals(player.getUniqueId())) return;
-                combat.setCombat(player, shooter);
-                combat.setCombat(shooter, player);
+                combat.directSetCombat(player, shooter); // Changed to directSetCombat
+                combat.directSetCombat(shooter, player); // Changed to directSetCombat
             }
             return;
         }
@@ -146,11 +155,11 @@ public final class EntityDamageByEntityListener implements Listener {
             if (tnt.getSource() instanceof Player source) {
                 if (source.getUniqueId().equals(player.getUniqueId())) {
                     if (combat.getConfig().getBoolean("self-combat", false)) {
-                        combat.setCombat(player, player);
+                        combat.directSetCombat(player, player); // Changed to directSetCombat
                     }
                 } else {
-                    combat.setCombat(player, source);
-                    combat.setCombat(source, player);
+                    combat.directSetCombat(player, source); // Changed to directSetCombat
+                    combat.directSetCombat(source, player); // Changed to directSetCombat
                 }
             }
         }

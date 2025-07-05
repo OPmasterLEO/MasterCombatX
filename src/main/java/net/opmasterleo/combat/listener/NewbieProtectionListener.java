@@ -5,6 +5,7 @@ import net.kyori.adventure.title.Title;
 import net.opmasterleo.combat.Combat;
 import net.opmasterleo.combat.manager.PlaceholderManager;
 import net.opmasterleo.combat.util.ChatUtil;
+import net.opmasterleo.combat.util.SchedulerUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -58,7 +59,7 @@ public class NewbieProtectionListener implements Listener {
     private void startExpirationChecker() {
         if (!enabled) return;
 
-        Bukkit.getScheduler().runTaskTimer(Combat.getInstance(), () -> {
+        SchedulerUtil.runTaskTimer(Combat.getInstance(), () -> {
             long currentTime = System.currentTimeMillis();
             List<UUID> toRemove = new ArrayList<>();
 

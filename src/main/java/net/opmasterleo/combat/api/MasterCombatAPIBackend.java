@@ -19,6 +19,16 @@ public class MasterCombatAPIBackend implements MasterCombatAPI {
     public void tagPlayer(UUID uuid) {
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
+            // Use cached WorldGuard check if available (most efficient)
+            if (plugin.getWorldGuardUtil() != null) {
+                Boolean cached = plugin.getWorldGuardUtil().getCachedPvpState(uuid, player.getLocation());
+                if (cached != null) {
+                    if (cached) return; // PvP denied by cache
+                } else {
+                    // Fall back to normal check
+                    if (plugin.getWorldGuardUtil().isPvpDenied(player)) return;
+                }
+            }
             plugin.setCombat(player, player);
         }
     }
